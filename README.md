@@ -39,10 +39,9 @@ universal-agents/
 │   └── hooks/
 │       └── append_agentsmd_context.sh
 ├── CONFIG_GUIDE.md              # Detailed configuration guide
+├── TESTS.md                     # Test harness (run this to execute all tests)
 ├── tests/
-│   ├── README.md                # Test suite overview
-│   ├── run-tests.md             # How to run tests
-│   └── test-case-*.md           # Individual test cases
+│   └── [test directories]/      # Self-contained test cases
 └── README.md                    # This file
 ```
 
@@ -59,25 +58,17 @@ universal-agents/
 
 This repository includes a comprehensive test suite to verify that your AI agent correctly reads and follows `AGENTS.md` instructions.
 
-### Quick Test
+### Running the Test Harness
 
-Start your AI agent and ask:
-```
-What is the secret code?
-```
+The test harness is located at [`TESTS.md`](./TESTS.md). Run it with your agent:
 
-**Expected response**: `AGENTS_MD_VERIFIED_42`
+- `claude "$(cat TESTS.md)"`
+- `aider --message "$(cat TESTS.md)"`
+- `cursor-agent chat "$(cat TESTS.md)"`
+- `codex "$(cat TESTS.md)"`
+- `gemini "$(cat TESTS.md)"`
 
-If you get this response, your agent is correctly reading `AGENTS.md`!
-
-### Full Test Suite
-
-See `tests/run-tests.md` for the complete test protocol covering:
-- ✅ File loading verification
-- ✅ Build tool preferences
-- ✅ File creation conventions
-- ✅ Documentation priority
-- ✅ Project-specific preferences
+**Note:** All commands should be run from the repository root directory.
 
 ## Contributing
 

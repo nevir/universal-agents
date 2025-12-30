@@ -60,32 +60,15 @@ This repository includes a comprehensive test suite to verify that your AI agent
 
 ### Running the Test Harness
 
-The test harness is located at [`TESTS.md`](./TESTS.md). It contains self-contained prompts that verify AGENTS.md compliance without mentioning the file itself.
+The test harness is located at [`TESTS.md`](./TESTS.md). Run it with your agent:
 
-**Test with Claude Code:**
-```bash
-claude "$(cat TESTS.md)"
-```
+- `claude "$(cat TESTS.md)"`
+- `aider --message "$(cat TESTS.md)"`
+- `codex "$(cat TESTS.md)"`
+- `gemini "$(cat TESTS.md)"`
+- Cursor: Copy and paste the entire content of `TESTS.md` into the chat
 
-**Test with Aider:**
-```bash
-aider --message "$(cat TESTS.md)"
-```
-
-**Test with Cursor:**
-Open the repository in Cursor, then copy and paste the entire content of `TESTS.md` into the chat.
-
-**Test with OpenAI Codex:**
-```bash
-codex "$(cat TESTS.md)"
-```
-
-**Test with Gemini CLI:**
-```bash
-gemini "$(cat TESTS.md)"
-```
-
-**Note:** All commands should be run from the repository root directory to ensure proper context and avoid leaking test file paths to the agent.
+**Note:** All commands should be run from the repository root directory.
 
 ### Quick Verification
 

@@ -28,11 +28,12 @@ All tests should verify that agents:
    - Provide ONLY the content from `prompt.md`
    - Compare the agent's response against `expected.md`
    - Mark as PASS or FAIL
-3. After all tests complete, verify no tracked files were modified:
+3. After all tests complete, verify the git working tree is clean:
    - Run `git status --porcelain`
-   - If any tracked files were modified (M), added (A), or deleted (D), the test run FAILS
-   - Only untracked files (?) are acceptable (test outputs should be gitignored)
-   - If any tracked files changed, report which files and mark the entire test run as FAILED
+   - The output must be empty (no output at all)
+   - Any output means the test run FAILS (modified files, added files, deleted files, or untracked files)
+   - If untracked files (?) appear, they were not properly gitignored
+   - If any files appear in the status, report which files and mark the entire test run as FAILED
 4. Output results in the format specified below
 
 ### Output Format
@@ -52,9 +53,9 @@ When running tests, output results in this format:
 
 ---
 Git Status Check: PASS/FAIL
-  [Status of git working tree]
+  [Empty output expected, or list of files that appeared in git status]
 
-Summary: X/Y tests passed, git status [clean/dirty]
+Summary: X/Y tests passed, git status [clean/FAILED]
 ```
 
 ### Example Output
@@ -80,7 +81,7 @@ color-preference: PASS
 
 ---
 Git Status Check: PASS
-  No tracked files were modified
+  Working tree is clean (git status --porcelain returned empty)
 
 Summary: 3/4 tests passed, git status clean
 ```

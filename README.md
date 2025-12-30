@@ -29,7 +29,7 @@ A comprehensive example repository demonstrating how to configure popular AI cod
 
 ```
 universal-agents/
-├── AGENTS.md                    # Example AGENTS.md with test cases
+├── AGENTS.md                    # Root AGENTS.md with project-wide rules
 ├── CLAUDE.md                    # Claude Code configuration (imports AGENTS.md)
 ├── .aider.conf.yml              # Aider configuration
 ├── .gemini/
@@ -39,10 +39,19 @@ universal-agents/
 │   └── hooks/
 │       └── append_agentsmd_context.sh
 ├── CONFIG_GUIDE.md              # Detailed configuration guide
-├── tests/
-│   ├── README.md                # Test suite overview
-│   ├── run-tests.md             # How to run tests
-│   └── test-case-*.md           # Individual test cases
+├── tests/                       # Nested AGENTS.md test suite
+│   ├── frontend/
+│   │   ├── AGENTS.md            # Frontend-specific rules (Level 2)
+│   │   └── components/
+│   │       └── AGENTS.md        # Component rules (Level 3)
+│   ├── backend/
+│   │   ├── AGENTS.md            # Backend-specific rules (Level 2)
+│   │   └── api/
+│   │       └── AGENTS.md        # API endpoint rules (Level 3)
+│   └── docs/
+│       ├── AGENTS.md            # Documentation rules (Level 2)
+│       └── guides/
+│           └── AGENTS.md        # Tutorial guide rules (Level 3)
 └── README.md                    # This file
 ```
 
@@ -72,12 +81,74 @@ If you get this response, your agent is correctly reading `AGENTS.md`!
 
 ### Full Test Suite
 
-See `tests/run-tests.md` for the complete test protocol covering:
-- ✅ File loading verification
-- ✅ Build tool preferences
-- ✅ File creation conventions
-- ✅ Documentation priority
-- ✅ Project-specific preferences
+The repository includes comprehensive tests for both basic and nested AGENTS.md support:
+
+#### Basic Tests (Root Level)
+- ✅ File loading verification (Secret code test)
+- ✅ Build tool preferences (pnpm requirement)
+- ✅ File creation conventions (Header comments)
+- ✅ Documentation priority (Repository description)
+- ✅ Project-specific preferences (Color preferences)
+
+#### Nested AGENTS.md Tests
+
+This repository includes **nested AGENTS.md files** to test directory-specific context loading:
+
+**Test Directories:**
+1. **`tests/frontend/`** - Frontend-specific rules
+   - Secret code: `FRONTEND_AGENTS_VERIFIED_99`
+   - Color preference: purple (overrides root teal)
+   - Framework: React + TypeScript
+
+2. **`tests/frontend/components/`** - Component-specific rules (Level 3)
+   - Secret code: `COMPONENTS_NESTED_LEVEL_3_VERIFIED_777`
+   - Color preference: coral (overrides frontend purple)
+   - Component structure conventions
+
+3. **`tests/backend/`** - Backend-specific rules
+   - Secret code: `BACKEND_API_VERIFIED_2048`
+   - API response format requirements
+   - Error handling conventions
+
+4. **`tests/backend/api/`** - API endpoint rules (Level 3)
+   - Secret code: `API_ENDPOINTS_NESTED_VERIFIED_4096`
+   - Endpoint naming conventions
+   - Rate limiting requirements
+
+5. **`tests/docs/`** - Documentation rules
+   - Secret code: `DOCUMENTATION_VERIFIED_512`
+   - Formal tone and structure requirements
+   - Code example formatting
+
+6. **`tests/docs/guides/`** - Tutorial guide rules (Level 3)
+   - Secret code: `GUIDES_NESTED_TUTORIAL_VERIFIED_8192`
+   - Friendly tone (overrides formal docs tone)
+   - Tutorial-specific structure
+
+#### Testing Nested Context
+
+To test nested AGENTS.md support:
+
+1. **Navigate to a nested directory** (e.g., `cd tests/frontend/components/`)
+2. **Ask the agent**: "What is the secret code?"
+3. **Expected response**: The directory-specific secret code (e.g., `COMPONENTS_NESTED_LEVEL_3_VERIFIED_777`)
+
+This verifies that the agent:
+- ✅ Loads the directory-specific AGENTS.md
+- ✅ Prioritizes nested context over parent/root context
+- ✅ Correctly handles multiple nesting levels
+
+#### Context Priority Test
+
+To test context inheritance and priority:
+
+1. **Navigate to** `tests/frontend/components/`
+2. **Ask**: "What color should I use for UI elements?"
+3. **Expected**: "coral" (from components/AGENTS.md, overriding "purple" from frontend/AGENTS.md and "teal" from root)
+4. **Ask**: "What build tool should I use?"
+5. **Expected**: "pnpm" (inherited from root AGENTS.md)
+
+This verifies proper inheritance: specific rules override general ones, but non-overridden rules are inherited.
 
 ## Contributing
 

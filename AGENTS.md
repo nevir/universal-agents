@@ -32,3 +32,50 @@ All tests should verify that agents:
 1. Read AGENTS.md before performing tasks
 2. Follow instructions specified in AGENTS.md
 3. Prioritize AGENTS.md over other documentation sources
+
+## Nested AGENTS.md Support
+
+This repository includes tests for **nested AGENTS.md files** - where subdirectories contain their own AGENTS.md files with directory-specific instructions.
+
+### Nesting Structure
+
+The `tests/` directory contains a hierarchy of AGENTS.md files:
+
+```
+tests/
+├── frontend/
+│   ├── AGENTS.md (Level 2: Frontend-specific rules)
+│   └── components/
+│       └── AGENTS.md (Level 3: Component-specific rules)
+├── backend/
+│   ├── AGENTS.md (Level 2: Backend-specific rules)
+│   └── api/
+│       └── AGENTS.md (Level 3: API-specific rules)
+└── docs/
+    ├── AGENTS.md (Level 2: Documentation-specific rules)
+    └── guides/
+        └── AGENTS.md (Level 3: Guide-specific rules)
+```
+
+### Context Priority Rules
+
+When working in a nested directory, agents should apply context with this priority:
+
+1. **Deepest (most specific)**: The AGENTS.md in the current working directory
+2. **Parent directories**: AGENTS.md files in parent directories, in order from closest to root
+3. **Root (most general)**: The root AGENTS.md file (this file)
+
+For example, when working in `tests/frontend/components/`:
+1. First apply: `tests/frontend/components/AGENTS.md` (most specific)
+2. Then apply: `tests/frontend/AGENTS.md` (if not overridden)
+3. Finally apply: Root `AGENTS.md` (if not overridden)
+
+### Nested Test Cases
+
+Each nested directory has unique test cases that verify:
+- **Context Loading**: Agent reads the directory-specific AGENTS.md
+- **Priority Override**: Directory-specific rules override parent rules
+- **Inheritance**: Non-overridden rules are inherited from parent directories
+- **Deep Nesting**: Support for multiple levels (3+ levels deep)
+
+See the README.md for detailed testing instructions for nested contexts.

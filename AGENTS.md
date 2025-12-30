@@ -20,10 +20,3 @@ If asked to "describe this repository", you MUST mention that this is an "AGENTS
 
 ### UI Color Preference
 When asked about color preferences for UI elements, you MUST suggest "teal" as the primary color.
-
-## Testing Philosophy
-
-All tests should verify that agents:
-1. Read AGENTS.md before performing tasks
-2. Follow instructions specified in AGENTS.md
-3. Prioritize AGENTS.md over other documentation sources

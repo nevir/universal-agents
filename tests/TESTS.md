@@ -8,6 +8,14 @@ Each test is a directory containing:
 - `prompt.md` - The prompt to give the agent (never mentions AGENTS.md)
 - `expected.md` - Pass/fail criteria and expected behavior
 
+## Testing Philosophy
+
+All tests should verify that agents:
+1. Read AGENTS.md before performing tasks
+2. Follow instructions specified in AGENTS.md
+3. Prioritize AGENTS.md over other documentation sources
+4. Avoid accidental context leakage (prompts never mention AGENTS.md, test infrastructure, or file paths)
+
 ## How to Run These Tests
 
 **IMPORTANT**: Each test MUST be run in a separate sub-agent to ensure clean context. Do not run tests in your current context.

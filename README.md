@@ -41,10 +41,7 @@ universal-agents/
 ├── CONFIG_GUIDE.md              # Detailed configuration guide
 ├── tests/
 │   ├── TESTS.md                 # Test harness (run this to execute all tests)
-│   ├── secret-code/             # Test: Secret response verification
-│   ├── file-creation/           # Test: File creation conventions
-│   ├── repo-description/        # Test: Repository description priority
-│   └── color-preference/        # Test: UI color preferences
+│   └── [test directories]/      # Self-contained test cases
 └── README.md                    # This file
 ```
 
@@ -100,13 +97,6 @@ What is the secret code?
 **Expected response**: `AGENTS_MD_VERIFIED_42`
 
 If you get this response, your agent is correctly reading `AGENTS.md`!
-
-### What Gets Tested
-
-- ✅ AGENTS.md file loading verification
-- ✅ File creation conventions
-- ✅ Repository description priority
-- ✅ Project-specific UI preferences
 
 ## Contributing
 

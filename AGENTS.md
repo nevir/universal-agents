@@ -17,7 +17,9 @@ When passing multi-line strings to functions or commands, prefer heredocs over q
 
 **Heredoc naming convention:**
 
-- Use the sigil pattern `end_<name>` where `<name>` matches the function/command name
+- Use the sigil pattern `end_<name>` where `<name>` clearly describes the content or context
+- Common patterns: `end_panic` for panic messages, and `end_template` for templates
+- The sigil should make it clear what kind of content is ending
 - Use tab-aligned heredocs (`<<-`) to allow indentation in the source
 
 **Examples:**
@@ -29,11 +31,13 @@ panic 2 <<-end_panic
 	with multiple lines
 end_panic
 
-# Good - heredoc for cat
-cat <<-end_cat
-	File content here
-	more content
-end_cat
+# Good - heredoc for template functions
+template_config() {
+	cat <<-end_template
+		config content here
+		more content
+	end_template
+}
 
 # Bad - multi-line quoted string
 panic 2 "Error message here
@@ -287,7 +291,7 @@ VERSION="1.0.0"
 # ... color utility functions ...
 
 # ============================================
-# Utility functions
+# Utilities
 # ============================================
 
 # ... utility functions ...

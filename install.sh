@@ -4,7 +4,7 @@ set -e
 VERSION="1.0.0"
 
 # ============================================
-# Color codes (borrowed from tests/test.sh)
+# Colors
 # ============================================
 
 color_red='\033[0;31m'
@@ -25,10 +25,6 @@ color_agent="$color_cyan"
 color_flag="$color_purple"
 color_path="$color_yellow"
 
-# ============================================
-# Utility functions (borrowed from tests/test.sh)
-# ============================================
-
 c() {
 	local color_name="$1"; shift
 	local text="$*"
@@ -41,11 +37,23 @@ c() {
 	printf "%s%s%s" "$color_code" "$text" "$color_reset"
 }
 
+# ============================================
+# Utilities
+# ============================================
+
 trim() {
 	local var="$1"
 	var="${var#"${var%%[![:space:]]*}"}"
 	var="${var%"${var##*[![:space:]]}"}"
 	echo "$var"
+}
+
+indent() {
+	local spaces="$1"
+	local text="$2"
+	echo "$text" | while IFS= read -r line; do
+		printf "%${spaces}s%s\n" "" "$line"
+	done
 }
 
 panic() {
@@ -73,14 +81,6 @@ panic() {
 
 	printf "\n" >&2
 	exit "$exit_code"
-}
-
-indent() {
-	local spaces="$1"
-	local text="$2"
-	echo "$text" | while IFS= read -r line; do
-		printf "%${spaces}s%s\n" "" "$line"
-	done
 }
 
 # ============================================
@@ -234,84 +234,84 @@ yaml_add_item() {
 # ============================================
 
 template_agents_md() {
-	cat <<'EOF'
-# AGENTS.md
+	cat <<-'end_template'
+		# AGENTS.md
 
-This file provides context and instructions for AI coding agents.
-Add your project-specific instructions here.
+		This file provides context and instructions for AI coding agents.
+		Add your project-specific instructions here.
 
-Learn more: https://agents.md
-EOF
+		Learn more: https://agents.md
+	end_template
 }
 
 template_aider_conf() {
-	cat <<'EOF'
-# Aider configuration file
-# This configures Aider to automatically read AGENTS.md before each session
+	cat <<-'end_template'
+		# Aider configuration file
+		# This configures Aider to automatically read AGENTS.md before each session
 
-read:
-	- AGENTS.md
-EOF
+		read:
+		  - AGENTS.md
+	end_template
 }
 
 template_gemini_settings() {
-	cat <<'EOF'
-{
-	"context": {
-		"fileName": ["AGENTS.md", "GEMINI.md"]
-	}
-}
-EOF
+	cat <<-'end_template'
+		{
+		  "context": {
+		    "fileName": ["AGENTS.md", "GEMINI.md"]
+		  }
+		}
+	end_template
 }
 
 template_claude_md() {
-	cat <<'EOF'
-# In ./CLAUDE.md
+	cat <<-'end_template'
+		# In ./CLAUDE.md
 
-@AGENTS.md
-EOF
+		@AGENTS.md
+	end_template
 }
 
 template_claude_settings() {
-	cat <<'EOF'
-{
-	"hooks": {
-		"SessionStart": [
-			{
-				"matcher": "startup",
-				"hooks": [
-					{
-						"type": "command",
-						"command": "$CLAUDE_PROJECT_DIR/.claude/hooks/append_agentsmd_context.sh"
-					}
-				]
-			}
-		]
-	}
-}
-EOF
+	cat <<-'end_template'
+		{
+		  "hooks": {
+		    "SessionStart": [
+		      {
+		        "matcher": "startup",
+		        "hooks": [
+		          {
+		            "type": "command",
+		            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/append_agentsmd_context.sh"
+		          }
+		        ]
+		      }
+		    ]
+		  }
+		}
+	end_template
 }
 
 template_claude_hook() {
-	cat <<'EOF'
-#!/bin/sh
+	cat <<-'end_template'
+		#!/bin/sh
 
-# SessionStart hook for Claude Code
-# Automatically appends all AGENTS.md files found in the repository to the context
-# This is a workaround for Claude Code's current lack of native AGENTS.md support
+		# SessionStart hook for Claude Code
+		# Automatically appends all AGENTS.md files found in the repository to the context
+		# This is a workaround for Claude Code's current lack of native AGENTS.md support
 
-echo "=== AGENTS.md Context Loading ==="
-echo ""
-
-# Find all AGENTS.md files in current directory and subdirectories
-find "$CLAUDE_PROJECT_DIR" -name "AGENTS.md" -type f | while read -r file; do
-		echo "--- Loading: $file ---"
-		cat "$file"
+		echo "=== AGENTS.md Context Loading ==="
 		echo ""
-done
 
-echo "=== End of AGENTS.md Context ==="
-EOF
+		# Find all AGENTS.md files in current directory and subdirectories
+		find "$CLAUDE_PROJECT_DIR" -name "AGENTS.md" -type f | while read -r file; do
+		    echo "--- Loading: $file ---"
+		    cat "$file"
+		    echo ""
+		done
+
+		echo "=== End of AGENTS.md Context ==="
+	end_template
 }
 
 # ============================================
@@ -628,11 +628,11 @@ main() {
 			aider|gemini|claude)
 				# It's an agent name - check for ambiguity
 				if [ -e "$first_arg" ]; then
-					panic 2 <<-EOF
+					panic 2 <<-end_panic
 						Ambiguous argument: $(c agent "'$first_arg'")
 						This is both a valid agent name AND an existing path.
 						Please rename the file/directory or use an explicit path like $(c path "'./$first_arg'")
-					EOF
+					end_panic
 				fi
 				# All args are agents
 				agents="$positional_args"

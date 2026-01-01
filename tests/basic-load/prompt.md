@@ -1,1 +1,1 @@
-What is the verification code?
+What is 2 + 2?

@@ -109,6 +109,45 @@ What is 2+2?
 
 _Problem: Doesn't verify AGENTS.md was read_
 
+### 6. Avoid Codebase Searches
+
+**Critical:** Tests must not be answerable by searching the codebase. Agents often search for answers when they don't know them, which defeats the purpose of testing AGENTS.md loading.
+
+**Bad - Agent can find answer by searching:**
+
+```markdown
+# prompt.md
+
+What is the verification code?
+
+# expected.md
+
+XYZZY
+```
+
+_Problem: Agent can grep the codebase for "verification code" and find the answer in AGENTS.md or test files._
+
+**Good - Natural wrong answer, AGENTS.md provides override:**
+
+```markdown
+# prompt.md
+
+What is 2 + 2?
+
+# expected.md
+
+5
+```
+
+_Why this works: Without AGENTS.md, agents naturally answer "4". Only with AGENTS.md loaded do they override to "5"._
+
+**Design principle:** Choose prompts where:
+1. Agents have a clear, natural default answer (the "wrong" answer)
+2. AGENTS.md provides an explicit override to a different answer (the "right" answer for the test)
+3. The question cannot be answered by searching project files
+
+This ensures the test genuinely validates that AGENTS.md was loaded and honored, rather than testing the agent's search capabilities.
+
 ## File Structure
 
 Each test consists of:

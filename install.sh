@@ -102,26 +102,25 @@ json_set() {
   local value_json="$3"
   local temp_file="/tmp/json_set_tmp_$$_$(date +%s)"
 
-  KEY_PATH="$key_path" VALUE_JSON="$value_json" \
-  cat "$file" | perl -MJSON::PP -0777 /dev/fd/3 3<<-'PERLCODE' > "$temp_file"
-		my $json = JSON::PP->new->utf8->relaxed->pretty->canonical;
-		my $data = $json->decode(do { local $/; <STDIN> });
-		my $value = $json->decode($ENV{VALUE_JSON});
+  cat "$file" | perl -MJSON::PP -0777 -e '
+my $json = JSON::PP->new->utf8->relaxed->pretty->canonical;
+my $data = $json->decode(do { local $/; <STDIN> });
+my $value = $json->decode(q{'"$value_json"'});
 
-		my @keys = split /\./, $ENV{KEY_PATH};
-		my $ref = $data;
-		$ref = ($ref->{$_} //= {}) for @keys[0..$#keys-1];
+my @keys = split /\./, q{'"$key_path"'};
+my $ref = $data;
+$ref = ($ref->{$_} //= {}) for @keys[0..$#keys-1];
 
-		my $last = $keys[-1];
-		if (ref $ref->{$last} eq "ARRAY" && ref $value eq "ARRAY") {
-		  my %seen;
-		  $ref->{$last} = [grep { !$seen{$_}++ } (@{$ref->{$last}}, @$value)];
-		} else {
-		  $ref->{$last} = $value;
-		}
+my $last = $keys[-1];
+if (ref $ref->{$last} eq "ARRAY" && ref $value eq "ARRAY") {
+  my %seen;
+  $ref->{$last} = [grep { !$seen{$_}++ } (@{$ref->{$last}}, @$value)];
+} else {
+  $ref->{$last} = $value;
+}
 
-		print $json->encode($data);
-	PERLCODE
+print $json->encode($data);
+' > "$temp_file"
 
   mv "$temp_file" "$file"
 }
@@ -131,43 +130,42 @@ json_has_value() {
   local key_path="$2"
   local search_value="$3"
 
-  KEY_PATH="$key_path" SEARCH_VALUE="$search_value" \
-  cat "$file" | perl -MJSON::PP -0777 /dev/fd/3 3<<-'PERLCODE'
-		my $json = JSON::PP->new->utf8->relaxed;
-		my $data = $json->decode(do { local $/; <STDIN> });
+  cat "$file" | perl -MJSON::PP -0777 -e '
+my $json = JSON::PP->new->utf8->relaxed;
+my $data = $json->decode(do { local $/; <STDIN> });
 
-		my @keys = split /\./, $ENV{KEY_PATH};
-		my $ref = $data;
+my @keys = split /\./, q{'"$key_path"'};
+my $ref = $data;
 
-		# Navigate to key, return false if path does not exist
-		for my $key (@keys) {
-		  if (ref $ref eq "HASH" && exists $ref->{$key}) {
-		    $ref = $ref->{$key};
-		  } else {
-		    print "false";
-		    exit 0;
-		  }
-		}
+# Navigate to key, return false if path does not exist
+for my $key (@keys) {
+  if (ref $ref eq "HASH" && exists $ref->{$key}) {
+    $ref = $ref->{$key};
+  } else {
+    print "false";
+    exit 0;
+  }
+}
 
-		if (ref $ref eq "ARRAY") {
-		  print((grep { $_ eq $ENV{SEARCH_VALUE} } @$ref) ? "true" : "false");
-		} elsif (defined $ref && $ref eq $ENV{SEARCH_VALUE}) {
-		  print "true";
-		} else {
-		  print "false";
-		}
-	PERLCODE
+if (ref $ref eq "ARRAY") {
+  print((grep { $_ eq q{'"$search_value"'} } @$ref) ? "true" : "false");
+} elsif (defined $ref && $ref eq q{'"$search_value"'}) {
+  print "true";
+} else {
+  print "false";
+}
+'
 }
 
 json_create() {
   local file="$1"
   local content="$2"
 
-  echo "$content" | perl -MJSON::PP -0777 /dev/fd/3 3<<-'PERLCODE' > "$file"
-		my $json = JSON::PP->new->utf8->pretty->canonical;
-		my $data = $json->decode(do { local $/; <STDIN> });
-		print $json->encode($data);
-	PERLCODE
+  echo "$content" | perl -MJSON::PP -0777 -e '
+my $json = JSON::PP->new->utf8->pretty->canonical;
+my $data = $json->decode(do { local $/; <STDIN> });
+print $json->encode($data);
+' > "$file"
 }
 
 # ============================================

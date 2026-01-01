@@ -3,6 +3,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+TESTS_DIR="$REPO_ROOT/tests"
 
 cd "$REPO_ROOT"
 
@@ -39,7 +40,7 @@ discover_agents() {
 
 discover_tests() {
   tests=""
-  for test_dir in tests/*/; do
+  for test_dir in "$TESTS_DIR"/*/; do
     test_name="$(basename "$test_dir")"
     case "$test_name" in
       _*|.*) continue ;;
@@ -195,7 +196,8 @@ done
 run_test() {
   local agent="$1"
   local test_name="$2"
-  local test_dir="tests/$test_name"
+  local test_dir="$TESTS_DIR/$test_name"
+  local sandbox_dir="$test_dir/sandbox"
 
   if [ ! -f "$test_dir/prompt.md" ]; then
     panic 2 "$test_dir/prompt.md not found"
@@ -204,10 +206,19 @@ run_test() {
     panic 2 "$test_dir/expected.md not found"
   fi
 
+  # Set up sandbox before running test
+  mkdir -p "$sandbox_dir"
+  git clean -fdx "$sandbox_dir" >/dev/null 2>&1
+
+  cd "$sandbox_dir"
+
+  "$REPO_ROOT/install.sh" -y > /dev/null 2>&1
+
   prompt=$(cat "$test_dir/prompt.md")
   expected=$(cat "$test_dir/expected.md")
   expected=$(trim "$expected")
 
+  # Run agent from within sandbox directory
   case "$agent" in
     claude)
       output=$(echo "$prompt" | claude --print 2>/dev/null)

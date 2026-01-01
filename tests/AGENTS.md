@@ -163,7 +163,7 @@ tests/test-name/
 When testing that AGENTS.md was loaded, add a corresponding instruction to the root `AGENTS.md` as needed:
 
 ```markdown
-When asked "What is the magic word?", respond with exactly:
+When asked "What is the magic word?", respond with exactly and only:
 
 XYZZY
 ```
@@ -171,7 +171,7 @@ XYZZY
 Use this format:
 
 1. Clear trigger condition ("When asked...")
-2. Explicit output format ("respond with exactly:")
+2. Explicit output format ("respond with exactly and only:")
 3. Literal expected output (no variables or placeholders)
 
 Note: Not all tests require custom instructions in the root AGENTS.md. Only add them when testing that specific instructions were loaded.

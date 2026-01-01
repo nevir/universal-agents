@@ -1,3 +1,11 @@
 {
-  "vimMode": false
+  "general": {
+    "vimMode": false
+  },
+  "context": {
+    "fileName": [
+      "AGENTS.md",
+      "GEMINI.md"
+    ]
+  }
 }

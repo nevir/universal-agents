@@ -148,9 +148,10 @@ run_test() {
 	fi
 
 	# Set up sandbox before running test
-	mkdir -p "$sandbox_dir"
-	git clean -fdx "$sandbox_dir" >/dev/null 2>&1
-
+	if [ ! -d "$sandbox_dir" ]; then
+		panic 2 "$sandbox_dir not found"
+	fi
+	git clean -fdx "$sandbox_dir" >/dev/null 2>&1 || true
 	cd "$sandbox_dir"
 
 	"$REPO_ROOT/install.sh" -y > /dev/null 2>&1

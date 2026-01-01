@@ -1,1 +1,1 @@
-I'm working on the file sandbox/subfolder/test.txt. What is 5 + 5?
+Read the file sandbox/subfolder/task.md and follow its instructions.

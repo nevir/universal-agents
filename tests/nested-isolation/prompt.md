@@ -1,1 +1,1 @@
-I'm working on the file sandbox/project-a/file-a.txt. What is 6 + 6?
+Read the file sandbox/project-a/task.md and follow its instructions.

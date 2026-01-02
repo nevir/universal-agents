@@ -1,8 +1,18 @@
 # Generated config files from install.sh
-*/sandbox/.aider.conf.yml
-*/sandbox/.gemini/
-*/sandbox/.claude/
-*/sandbox/CLAUDE.md
+/*/sandbox/.aider.conf.yml
+/*/sandbox/.gemini/
+/*/sandbox/.claude/
+/*/sandbox/CLAUDE.md
 
-# Backup files
-*/sandbox/*.backup.*
+# Except for tests that include them:
+!/install-idempotent/sandbox/.aider.conf.yml
+!/install-idempotent/sandbox/.gemini/
+!/install-idempotent/sandbox/.claude/
+!/install-idempotent/sandbox/CLAUDE.md
+
+!/install-partial-config/sandbox/.aider.conf.yml
+!/install-partial-config/sandbox/.gemini/
+!/install-partial-config/sandbox/.claude/
+
+# And special cases
+/nested-isolation/sandbox/AGENTS.md

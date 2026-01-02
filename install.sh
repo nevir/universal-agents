@@ -266,8 +266,6 @@ template_gemini_settings() {
 
 template_claude_md() {
 	cat <<-'end_template'
-		# In ./CLAUDE.md
-
 		@AGENTS.md
 	end_template
 }

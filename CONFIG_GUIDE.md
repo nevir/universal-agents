@@ -72,8 +72,6 @@ read:
 **Configuration File**: `CLAUDE.md`
 
 ```markdown
-# In ./CLAUDE.md
-
 @AGENTS.md
 ```
 

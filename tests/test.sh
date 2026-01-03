@@ -162,13 +162,18 @@ run_test() {
 		panic 2 "$test_dir/expected.md not found"
 	fi
 
-	# Set up sandbox before running test
+	# Create isolated temp directory for test
 	if [ ! -d "$sandbox_dir" ]; then
 		panic 2 "$sandbox_dir not found"
 	fi
-	git clean -fdx "$sandbox_dir" >/dev/null 2>&1 || true
-	cd "$sandbox_dir"
 
+	# Create temp dir and copy sandbox into it
+	local temp_dir
+	temp_dir=$(mktemp -d -t "universal-agents-test-XXXXXX")
+	cp -R "$sandbox_dir/"* "$sandbox_dir/".* "$temp_dir/" 2>/dev/null || true
+
+	# Change to temp dir and run install
+	cd "$temp_dir"
 	"$REPO_ROOT/install.sh" -y > /dev/null 2>&1
 
 	prompt=$(cat "$test_dir/prompt.md")
@@ -188,13 +193,13 @@ run_test() {
 			;;
 	esac
 
-	# Run agent from within sandbox directory
+	# Run agent from within temp directory
 	if [ "$VERBOSE" -eq 1 ]; then
 		# In verbose mode, clear the spinner line and show command and stream output
 		printf "\r\033[K"  # Clear the entire line
 		printf "  $(c test $test_name)\n"
-		printf "    $(c heading CWD:)\n"
-		indent 6 "$sandbox_dir"
+		printf "    $(c heading Temp dir:)\n"
+		indent 6 "$temp_dir"
 		printf "    $(c heading Command:)\n"
 		indent 6 "$TEST_COMMAND"
 		printf "    $(c heading Full output:)\n"
@@ -235,6 +240,7 @@ run_test() {
 	TEST_EXPECTED="$expected"
 	TEST_GOT="$output"
 	TEST_EXTRACTED="$extracted_answer"
+	TEST_TEMP_DIR="$temp_dir"
 
 	# Check if answer tags were found
 	if [ -z "$extracted_answer" ]; then
@@ -243,8 +249,11 @@ run_test() {
 	fi
 
 	if [ "$extracted_answer" = "$expected" ]; then
+		# Clean up temp dir on success
+		rm -rf "$temp_dir"
 		return 0
 	else
+		# Keep temp dir on failure for debugging
 		return 1
 	fi
 }
@@ -274,10 +283,14 @@ display_result() {
 			printf "    $(c heading Expected:)\n"
 			printf "      %s\n" "$TEST_EXPECTED"
 			printf "    $(c error Result:) $(c error FAIL)\n"
+			printf "    $(c heading Debug:) Temp dir preserved at:\n"
+			printf "      %s\n" "$TEST_TEMP_DIR"
 		else
 			# In normal mode, show everything for failures
 			printf "\r\033[K"  # Clear the entire line
 			printf "$(c error ✗) $(c test $test_name)\n"
+			printf "    $(c heading Temp dir:)\n"
+			indent 6 "$TEST_TEMP_DIR"
 			printf "    $(c heading Command:)\n"
 			indent 6 "$TEST_COMMAND"
 			printf "    $(c heading Full output:)\n"

@@ -280,7 +280,7 @@ template_claude_settings() {
 		        "hooks": [
 		          {
 		            "type": "command",
-		            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/append_agentsmd_context.sh"
+		            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/polyfill_agentsmd.sh"
 		          }
 		        ]
 		      }
@@ -294,21 +294,40 @@ template_claude_hook() {
 	cat <<-'end_template'
 		#!/bin/sh
 
-		# SessionStart hook for Claude Code
-		# Automatically appends all AGENTS.md files found in the repository to the context
-		# This is a workaround for Claude Code's current lack of native AGENTS.md support
+		cd "$CLAUDE_PROJECT_DIR"
+		agent_files=$(find . -name "AGENTS.md" -type f)
+		[ -z "$agent_files" ] && exit 0
 
-		echo "=== AGENTS.md Context Loading ==="
-		echo ""
+		cat <<end_context
+		=== AGENTS.MD CONTEXT ===
 
-		# Find all AGENTS.md files in current directory and subdirectories
-		find "$CLAUDE_PROJECT_DIR" -name "AGENTS.md" -type f | while read -r file; do
-		    echo "--- Loading: $file ---"
-		    cat "$file"
-		    echo ""
-		done
+		This project uses AGENTS.md files to provide scoped instructions based on the
+		file or directory being worked on.
 
-		echo "=== End of AGENTS.md Context ==="
+		This project has the following AGENTS.md files:
+
+		$agent_files
+
+		NON-NEGOTIABLE: When working with any file or directory within the project:
+
+		1. Load ALL AGENTS.md files in the directory hierarchy matching that location.
+		   You do not have to reload AGENTS.md files you have already loaded previously.
+
+		2. ALWAYS apply instructions from the AGENTS.md files that match that location.
+		   When there are conflicting instructions, apply instructions from the
+		   AGENTS.md file that is CLOSEST (most specific) to that location. More
+		   specific instructions OVERRIDE more general ones.
+
+		Example (hypothetical project):
+			AGENTS.md
+			subfolder/
+				file.txt
+				AGENTS.md
+
+			When working with "subfolder/file.txt":
+			- Instructions from "subfolder/AGENTS.md" take precedence
+			- Instructions from root "AGENTS.md" apply only if not overridden
+		end_context
 	end_template
 }
 
@@ -470,28 +489,17 @@ plan_gemini() {
 }
 
 plan_claude() {
-	local use_hook="$1"
-
-	if [ "$use_hook" = "true" ]; then
-		# Plan SessionStart hook approach
-		if [ -f ".claude/settings.json" ]; then
-			add_change "skip" ".claude/settings.json" "needs manual update for hook" ""
-		else
-			add_change "create" ".claude/settings.json" "" "$(template_claude_settings)"
-		fi
-
-		if [ -f ".claude/hooks/append_agentsmd_context.sh" ]; then
-			add_change "skip" ".claude/hooks/append_agentsmd_context.sh" "already exists" ""
-		else
-			add_change "create" ".claude/hooks/append_agentsmd_context.sh" "" "$(template_claude_hook)"
-		fi
+	# Always use SessionStart hook approach for proper AGENTS.md inheritance
+	if [ -f ".claude/settings.json" ]; then
+		add_change "skip" ".claude/settings.json" "needs manual update for hook" ""
 	else
-		# Plan CLAUDE.md approach (recommended)
-		if [ -f "CLAUDE.md" ]; then
-			add_change "skip" "CLAUDE.md" "already exists" ""
-		else
-			add_change "create" "CLAUDE.md" "" "$(template_claude_md)"
-		fi
+		add_change "create" ".claude/settings.json" "" "$(template_claude_settings)"
+	fi
+
+	if [ -f ".claude/hooks/polyfill_agentsmd.sh" ]; then
+		add_change "skip" ".claude/hooks/polyfill_agentsmd.sh" "already exists" ""
+	else
+		add_change "create" ".claude/hooks/polyfill_agentsmd.sh" "" "$(template_claude_hook)"
 	fi
 }
 
@@ -561,8 +569,7 @@ show_help() {
 	printf "$(c heading Options:)\n"
 	printf "  $(c flag -h), $(c flag --help)          Show this help message\n"
 	printf "  $(c flag -y), $(c flag --yes)           Auto-confirm (skip confirmation prompt)\n"
-	printf "  $(c flag -n), $(c flag --dry-run)       Show plan only, don't apply changes\n"
-	printf "  $(c flag --claude-hook)       Use SessionStart hook for Claude (default: CLAUDE.md import)\n\n"
+	printf "  $(c flag -n), $(c flag --dry-run)       Show plan only, don't apply changes\n\n"
 
 	printf "$(c heading Examples:)\n"
 	printf "  install.sh                           # All agents, current directory\n"
@@ -581,7 +588,6 @@ main() {
 	# Parse arguments
 	local auto_confirm=false
 	local dry_run=false
-	local claude_hook=false
 	local project_dir="."
 	local agents=""
 	local positional_args=""
@@ -599,10 +605,6 @@ main() {
 				;;
 			-n|--dry-run)
 				dry_run=true
-				shift
-				;;
-			--claude-hook)
-				claude_hook=true
 				shift
 				;;
 			-*)
@@ -697,7 +699,7 @@ main() {
 	plan_agents_md
 	[ "$skip_aider" = false ] && plan_aider
 	[ "$skip_gemini" = false ] && plan_gemini
-	[ "$skip_claude" = false ] && plan_claude "$claude_hook"
+	[ "$skip_claude" = false ] && plan_claude
 
 	# Display ledger
 	display_ledger

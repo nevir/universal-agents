@@ -34,3 +34,17 @@ Example (hypothetical project):
 	- Instructions from "subfolder/AGENTS.md" take precedence
 	- Instructions from root "AGENTS.md" apply only if not overridden
 end_context
+
+# Load top-level AGENTS.md if present - it applies to ALL work in the project
+if [ -f "./AGENTS.md" ]; then
+	cat <<-end_root_context
+
+	=== PROJECT-WIDE INSTRUCTIONS ===
+
+	The following instructions from the root AGENTS.md apply to ALL work within
+	this project, as all files are within scope of the project:
+
+	end_root_context
+	cat "./AGENTS.md"
+	printf "\n"
+fi

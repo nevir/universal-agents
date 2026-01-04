@@ -3,6 +3,8 @@ set -e
 
 VERSION="1.0.0"
 
+SUPPORTED_AGENTS="claude gemini"
+
 # ============================================
 # Colors
 # ============================================
@@ -37,9 +39,41 @@ c() {
 	printf "%s%s%s" "$color_code" "$text" "$color_reset"
 }
 
+c_list() {
+	local color_type="$1"
+	shift
+	local result=""
+	local first=1
+
+	for item in "$@"; do
+		[ $first -eq 0 ] && result="$result, "
+		result="$result$(c "$color_type" "$item")"
+		first=0
+	done
+
+	echo "$result"
+}
+
 # ============================================
 # Utilities
 # ============================================
+
+is_supported_agent() {
+	local agent="$1"
+	for supported in $SUPPORTED_AGENTS; do
+		[ "$agent" = "$supported" ] && return 0
+	done
+	return 1
+}
+
+is_enabled_agent() {
+	local agent="$1"
+	local enabled_list="$2"
+	for enabled in $enabled_list; do
+		[ "$agent" = "$enabled" ] && return 0
+	done
+	return 1
+}
 
 trim() {
 	local var="$1"
@@ -244,16 +278,6 @@ template_agents_md() {
 	end_template
 }
 
-template_aider_conf() {
-	cat <<-'end_template'
-		# Aider configuration file
-		# This configures Aider to automatically read AGENTS.md before each session
-
-		read:
-		  - AGENTS.md
-	end_template
-}
-
 template_gemini_settings() {
 	cat <<-'end_template'
 		{
@@ -261,12 +285,6 @@ template_gemini_settings() {
 		    "fileName": ["AGENTS.md", "GEMINI.md"]
 		  }
 		}
-	end_template
-}
-
-template_claude_md() {
-	cat <<-'end_template'
-		@AGENTS.md
 	end_template
 }
 
@@ -339,12 +357,12 @@ template_claude_hook() {
 
 		# If there is a root AGENTS.md, load it now because it always applies.
 		if [ -f "./AGENTS.md" ]; then
-			cat <<-end_root_context
-				The content of ./AGENTS.md is as follows:
-				<root_agentsmd>
-				$(cat "./AGENTS.md")
-				</root_agentsmd>
-			end_root_context
+		  cat <<-end_root_context
+		    The content of ./AGENTS.md is as follows:
+		    <root_agentsmd>
+		    $(cat "./AGENTS.md")
+		    </root_agentsmd>
+		  end_root_context
 		fi
 	end_template
 }
@@ -469,21 +487,6 @@ plan_agents_md() {
 	fi
 }
 
-plan_aider() {
-	if [ -f ".aider.conf.yml" ]; then
-		if yaml_has_item ".aider.conf.yml" "read" "AGENTS.md"; then
-			add_change "skip" ".aider.conf.yml" "already configured" ""
-		else
-			# Need to add AGENTS.md to read list
-			local current_content=$(cat ".aider.conf.yml")
-			# For now, mark as skip and show manual instructions
-			add_change "skip" ".aider.conf.yml" "needs manual update: add 'AGENTS.md' to read list" ""
-		fi
-	else
-		add_change "create" ".aider.conf.yml" "" "$(template_aider_conf)"
-	fi
-}
-
 plan_gemini() {
 	if [ -f ".gemini/settings.json" ]; then
 		local has_value=$(json_has_value ".gemini/settings.json" "context.fileName" "AGENTS.md")
@@ -580,22 +583,22 @@ show_help() {
 	printf "AGENTS.md polyfill installer - Configure AI agents to support AGENTS.md\n\n"
 
 	printf "$(c heading Arguments:)\n"
-	printf "  $(c path PATH)                Project directory (default: current directory)\n"
-	printf "  $(c agent AGENTS...)           Agent names to configure (default: all)\n"
-	printf "                      Valid agents: $(c agent aider), $(c agent gemini), $(c agent claude)\n\n"
+	printf "  $(c path PATH)             Project directory (default: current directory)\n"
+	printf "  $(c agent AGENTS...)        Agent names to configure (default: all)\n"
+	printf "                   Valid agents: $(c_list agent $SUPPORTED_AGENTS)\n\n"
 
 	printf "$(c heading Options:)\n"
-	printf "  $(c flag -h), $(c flag --help)          Show this help message\n"
-	printf "  $(c flag -y), $(c flag --yes)           Auto-confirm (skip confirmation prompt)\n"
-	printf "  $(c flag -n), $(c flag --dry-run)       Show plan only, don't apply changes\n\n"
+	printf "  $(c flag -h), $(c flag --help)       Show this help message\n"
+	printf "  $(c flag -y), $(c flag --yes)        Auto-confirm (skip confirmation prompt)\n"
+	printf "  $(c flag -n), $(c flag --dry-run)    Show plan only, don't apply changes\n\n"
 
 	printf "$(c heading Examples:)\n"
-	printf "  install.sh                           # All agents, current directory\n"
-	printf "  install.sh $(c agent aider)                       # Only Aider, current directory\n"
-	printf "  install.sh $(c path /path/to/project)            # All agents, specific directory\n"
-	printf "  install.sh $(c path .) $(c agent aider) $(c agent gemini)              # Aider and Gemini in current directory\n"
-	printf "  install.sh $(c flag -y) $(c agent aider)                    # Auto-confirm, Aider only\n"
-	printf "  install.sh $(c flag -n)                          # Dry-run, all agents\n\n"
+	printf "  install.sh                      # All agents, current directory\n"
+	printf "  install.sh $(c agent claude)               # Only Claude, current directory\n"
+	printf "  install.sh $(c path /path/to/project)     # All agents, specific directory\n"
+	printf "  install.sh $(c path .) $(c agent claude) $(c agent gemini)      # Claude and Gemini in current directory\n"
+	printf "  install.sh $(c flag -y) $(c agent claude)            # Auto-confirm, Claude only\n"
+	printf "  install.sh $(c flag -n)                   # Dry-run, all agents\n\n"
 }
 
 # ============================================
@@ -642,20 +645,18 @@ main() {
 		local first_arg="$1"
 
 		# Check if first arg is a valid agent name
-		case "$first_arg" in
-			aider|gemini|claude)
-				# It's an agent name - check for ambiguity
+		if is_supported_agent "$first_arg"; then
+			# It's an agent name - check for ambiguity
 				if [ -e "$first_arg" ]; then
-					panic 2 <<-end_panic
-						Ambiguous argument: $(c agent "'$first_arg'")
-						This is both a valid agent name AND an existing path.
-						Please rename the file/directory or use an explicit path like $(c path "'./$first_arg'")
-					end_panic
-				fi
-				# All args are agents
-				agents="$positional_args"
-				;;
-			*)
+				panic 2 <<-end_panic
+					Ambiguous argument: $(c agent "'$first_arg'")
+					This is both a valid agent name AND an existing path.
+					Please rename the file/directory or use an explicit path like $(c path "'./$first_arg'")
+				end_panic
+			fi
+			# All args are agents
+			agents="$positional_args"
+		else
 				# First arg might be a path - validate it exists if it looks like a path
 				# Otherwise, treat as invalid agent name
 				if [ -e "$first_arg" ] || [ "$first_arg" = "." ] || [ "$first_arg" = ".." ] || echo "$first_arg" | grep -q "/"; then
@@ -664,42 +665,28 @@ main() {
 					shift
 					# Remaining args are agents
 					agents="$*"
-				else
-					# Doesn't exist and doesn't look like a path - must be invalid agent
-					panic 2 "Unknown agent: $(c agent "'$first_arg'") (valid agents: $(c agent aider), $(c agent gemini), $(c agent claude))"
-				fi
-				;;
-		esac
+			else
+				# Doesn't exist and doesn't look like a path - must be invalid agent
+				panic 2 "Unknown agent: $(c agent "'$first_arg'") (valid agents: $(c_list agent $SUPPORTED_AGENTS))"
+			fi
+		fi
 	fi
 
-	# Determine which agents to skip
-	local skip_aider=true
-	local skip_gemini=true
-	local skip_claude=true
+	# Determine which agents to enable
+	local enabled_agents=""
 
 	if [ -z "$agents" ]; then
 		# No agents specified - enable all
-		skip_aider=false
-		skip_gemini=false
-		skip_claude=false
+		enabled_agents="$SUPPORTED_AGENTS"
 	else
 		# Enable only specified agents
 		for agent in $agents; do
-			case "$agent" in
-				aider)
-					skip_aider=false
-					;;
-				gemini)
-					skip_gemini=false
-					;;
-				claude)
-					skip_claude=false
-					;;
-				*)
-					panic 2 "Unknown agent: $(c agent "'$agent'") (valid agents: $(c agent aider), $(c agent gemini), $(c agent claude))"
-					;;
-			esac
+			if ! is_supported_agent "$agent"; then
+				panic 2 "Unknown agent: $(c agent "'$agent'") (valid agents: $(c_list agent $SUPPORTED_AGENTS))"
+			fi
+			enabled_agents="$enabled_agents $agent"
 		done
+		enabled_agents=$(trim "$enabled_agents")
 	fi
 
 	# Check requirements
@@ -715,9 +702,11 @@ main() {
 
 	# Plan changes
 	plan_agents_md
-	[ "$skip_aider" = false ] && plan_aider
-	[ "$skip_gemini" = false ] && plan_gemini
-	[ "$skip_claude" = false ] && plan_claude
+	for agent in $SUPPORTED_AGENTS; do
+		if is_enabled_agent "$agent" "$enabled_agents"; then
+			eval "plan_$agent"
+		fi
+	done
 
 	# Display ledger
 	display_ledger

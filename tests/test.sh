@@ -7,7 +7,7 @@ TESTS_DIR="$REPO_ROOT/tests"
 
 cd "$REPO_ROOT"
 
-KNOWN_AGENTS="claude gemini aider cursor"
+KNOWN_AGENTS="aider claude cursor gemini"
 
 # ============================================
 # Colors

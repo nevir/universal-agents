@@ -1,15 +1,12 @@
 # Generated config files from install.sh
-/*/sandbox/.aider.conf.yml
 /*/sandbox/.gemini/
 /*/sandbox/.claude/
 /*/sandbox/CLAUDE.md
 
 # Except for tests that include them:
-!/install-idempotent/sandbox/.aider.conf.yml
 !/install-idempotent/sandbox/.gemini/
 !/install-idempotent/sandbox/.claude/
 !/install-idempotent/sandbox/CLAUDE.md
 
-!/install-partial-config/sandbox/.aider.conf.yml
 !/install-partial-config/sandbox/.gemini/
 !/install-partial-config/sandbox/.claude/

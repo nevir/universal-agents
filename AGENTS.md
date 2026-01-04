@@ -153,7 +153,7 @@ c() {
 
 # Usage
 printf "$(c error "Error:") Something went wrong\n"
-printf "Install with $(c command "install.sh") $(c agent "aider")\n"
+printf "Install with $(c command "install.sh") $(c agent "claude")\n"
 ```
 
 **Consistency rules:**
@@ -269,7 +269,7 @@ c_list() {
 }
 
 # Usage
-printf "Available agents: $(c_list agent aider gemini claude)\n"
+printf "Available agents: $(c_list agent claude gemini)\n"
 ```
 
 ### Script Structure

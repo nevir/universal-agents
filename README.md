@@ -32,7 +32,6 @@ A comprehensive example repository demonstrating how to configure popular AI cod
 universal-agents/
 ├── AGENTS.md                    # Example AGENTS.md with test instructions
 ├── CLAUDE.md                    # Claude Code configuration (imports AGENTS.md)
-├── .aider.conf.yml              # Aider configuration
 ├── .gemini/
 │   └── settings.json            # Gemini CLI configuration
 ├── .claude/
@@ -46,15 +45,6 @@ universal-agents/
 │   └── [test directories]/      # Individual test cases
 └── README.md                    # This file
 ```
-
-## Configuration by Agent
-
-| Agent            | Status        | Config File             | Details                                                          |
-| ---------------- | ------------- | ----------------------- | ---------------------------------------------------------------- |
-| **Aider**        | ✅ Supported  | `.aider.conf.yml`       | See [CONFIG_GUIDE.md](CONFIG_GUIDE.md#aider-configuration)       |
-| **Gemini CLI**   | ✅ Supported  | `.gemini/settings.json` | See [CONFIG_GUIDE.md](CONFIG_GUIDE.md#gemini-cli-configuration)  |
-| **Cursor/Codex** | ✅ Native     | None required           | See [CONFIG_GUIDE.md](CONFIG_GUIDE.md#cursorcodex-configuration) |
-| **Claude Code**  | ⚠️ Workaround | `CLAUDE.md` + hooks     | See [CONFIG_GUIDE.md](CONFIG_GUIDE.md#claude-code-configuration) |
 
 ## Testing AGENTS.md Support
 

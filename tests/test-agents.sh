@@ -230,7 +230,7 @@ display_result() {
 # ============================================
 
 usage() {
-	printf "$(c heading Usage:) $(c command test.sh) [$(c agent AGENT)…] [$(c test TEST…)]"
+	printf "$(c heading Usage:) $(c command test-agents.sh) [$(c agent AGENT)…] [$(c test TEST…)]"
 }
 
 show_help() {
@@ -248,14 +248,14 @@ show_help() {
 	printf "  - Use $(c agent all) for all agents or $(c test all) for all tests\n\n"
 
 	printf "$(c heading Examples:)\n"
-	printf "  $(c command test.sh)                                           # All tests, all agents\n"
-	printf "  $(c command test.sh) $(c agent claude)                                    # All tests on claude\n"
-	printf "  $(c command test.sh) $(c agent claude) $(c agent gemini)                             # All tests on claude and gemini\n"
-	printf "  $(c command test.sh) $(c test basic-load)                                # basic-load on all agents\n"
-	printf "  $(c command test.sh) $(c test basic-load) $(c test nested-precedence)             # Two tests on all agents\n"
-	printf "  $(c command test.sh) $(c agent claude) $(c test basic-load)                         # basic-load on claude\n"
-	printf "  $(c command test.sh) $(c agent claude) $(c agent gemini) $(c test basic-load)                # basic-load on two agents\n"
-	printf "  $(c command test.sh) $(c agent claude) $(c test basic-load) $(c test nested-precedence)      # Two tests on claude\n\n"
+	printf "  $(c command test-agents.sh)                                           # All tests, all agents\n"
+	printf "  $(c command test-agents.sh) $(c agent claude)                                    # All tests on claude\n"
+	printf "  $(c command test-agents.sh) $(c agent claude) $(c agent gemini)                             # All tests on claude and gemini\n"
+	printf "  $(c command test-agents.sh) $(c test basic-load)                                # basic-load on all agents\n"
+	printf "  $(c command test-agents.sh) $(c test basic-load) $(c test nested-precedence)             # Two tests on all agents\n"
+	printf "  $(c command test-agents.sh) $(c agent claude) $(c test basic-load)                         # basic-load on claude\n"
+	printf "  $(c command test-agents.sh) $(c agent claude) $(c agent gemini) $(c test basic-load)                # basic-load on two agents\n"
+	printf "  $(c command test-agents.sh) $(c agent claude) $(c test basic-load) $(c test nested-precedence)      # Two tests on claude\n\n"
 
 	printf "$(c heading Options:)\n"
 	printf "  -h, --help    Show this help message\n"

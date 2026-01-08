@@ -180,11 +180,11 @@ Note: Not all tests require custom instructions in the root AGENTS.md. Only add 
 
 ```sh
 # From repository root
-./tests/test.sh                   # All tests, all agents
-./tests/test.sh claude            # All tests on Claude
-./tests/test.sh basic-load        # One test, all agents
-./tests/test.sh claude basic-load # One test, one agent
-./tests/test.sh -v                # Verbose mode
+./tests/test-agents.sh                   # All tests, all agents
+./tests/test-agents.sh claude            # All tests on Claude
+./tests/test-agents.sh basic-load        # One test, all agents
+./tests/test-agents.sh claude basic-load # One test, one agent
+./tests/test-agents.sh -v                # Verbose mode
 ```
 
 ## Test Execution Context

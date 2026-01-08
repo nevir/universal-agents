@@ -7,7 +7,7 @@ TESTS_DIR="$SCRIPT_DIR/agents"
 
 cd "$REPO_ROOT"
 
-KNOWN_AGENTS="aider claude cursor gemini"
+KNOWN_AGENTS="aider claude cursor-agent gemini"
 
 # Load common libraries
 . "$SCRIPT_DIR/_common/colors.sh"
@@ -17,6 +17,12 @@ KNOWN_AGENTS="aider claude cursor gemini"
 # ============================================
 # Agent-specific Utilities
 # ============================================
+
+# Normalize agent name for use in variable names (replace hyphens with underscores)
+normalize_agent_name() {
+	local agent="$1"
+	echo "$agent" | tr '-' '_'
+}
 
 extract_answer() {
 	local text="$1"
@@ -99,6 +105,9 @@ run_test() {
 	case "$agent" in
 		claude)
 			TEST_COMMAND="echo \"$prompt\" | claude --print"
+			;;
+		cursor-agent)
+			TEST_COMMAND="echo \"$prompt\" | cursor-agent --print"
 			;;
 		gemini)
 			TEST_COMMAND="echo \"$prompt\" | gemini"
@@ -434,8 +443,9 @@ main() {
 			display_result "$test_name" "$result"
 		done
 
-		eval "agent_passed_$agent=$passed"
-		eval "agent_total_$agent=$((passed + failed))"
+		local agent_var=$(normalize_agent_name "$agent")
+		eval "agent_passed_$agent_var=$passed"
+		eval "agent_total_$agent_var=$((passed + failed))"
 
 		printf "\n"
 	done
@@ -451,8 +461,9 @@ main() {
 
 	if [ "$agent_count" -gt 1 ]; then
 		for agent in $agents_to_run; do
-			eval "passed=\$agent_passed_$agent"
-			eval "total_tests=\$agent_total_$agent"
+			local agent_var=$(normalize_agent_name "$agent")
+			eval "passed=\$agent_passed_$agent_var"
+			eval "total_tests=\$agent_total_$agent_var"
 			if [ "$passed" -eq "$total_tests" ]; then
 				printf "$(c agent $agent): $(c success $passed/$total_tests)\n"
 			else

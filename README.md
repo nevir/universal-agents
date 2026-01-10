@@ -20,8 +20,11 @@ Configures your installed AI coding agents with complete [AGENTS.md](https://age
 
 ## Philosophy
 
-- **No rebuild step** - Edit config files, they just work. No commands to run after changes.
-- **Single source of truth** - `.agents/` is the canonical location for all agent configuration.
+AI coding agents shouldn't fragment your configuration. This project enables:
+
+- **Universal format** - Write AGENTS.md once, use it with Claude Code, Cursor, Gemini, and any future agent
+- **Standard locations** - `.agents/` and `AGENTS.md` files in predictable places, not scattered proprietary formats
+- **No rebuild step** - Edit AGENTS.md files, they just work. No commands to run after changes.
 - **Native behavior** - Leverage each agent's built-in features (hot reload, skill discovery, etc.)
 - **Simple and portable** - Shell scripts only. Works everywhere with no dependencies.
 

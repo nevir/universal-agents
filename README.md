@@ -1,6 +1,6 @@
-# Universal AGENTS.md Support
+# Universal Agents
 
-One install script. Full-featured [AGENTS.md](https://agents.md) support for all your AI coding agents.
+One install script. Standardized and centralized [AGENTS.md](https://agents.md) configuration and [Agent Skills](https://agentskills.io) support across major AI agents.
 
 ## Installation
 
@@ -10,7 +10,9 @@ curl -fsSL https://raw.githubusercontent.com/agentsmd/universal-agents/main/inst
 
 ## What This Does
 
-Configures your installed AI coding agents with complete [AGENTS.md](https://agents.md) support:
+Brings standardized and centralized support for [AGENTS.md](https://agents.md) and [Agent Skills](https://agentskills.io) to major AI coding agents. Most agents have incomplete or broken support natively - this fixes that.
+
+**AGENTS.md features:**
 
 📄 **Basic support**: Agents automatically read AGENTS.md files instead of (or in addition to) their proprietary formats
 
@@ -18,10 +20,19 @@ Configures your installed AI coding agents with complete [AGENTS.md](https://age
 
 🎯 **Selective**: Only loads relevant AGENTS.md files, not all of them (essential for large monorepos)
 
+**Skills features:**
+
+🔧 **Shared skills**: Store skills once in `.agents/skills/`, use across all agents
+
+♻️ **Native integration**: Skills symlink to each agent's native directory for hot reload and discovery
+
 ## Philosophy
 
-- **No rebuild step** - Edit config files, they just work. No commands to run after changes.
-- **Single source of truth** - `.agents/` is the canonical location for all agent configuration.
+AI coding agents shouldn't fragment your configuration. This project enables:
+
+- **Universal format** - Write AGENTS.md once, use it across major AI agents (Claude Code, Cursor, Gemini)
+- **Standard locations** - `.agents/` and `AGENTS.md` files in predictable places, not scattered proprietary formats
+- **No rebuild step** - Edit AGENTS.md files, they just work. No commands to run after changes.
 - **Native behavior** - Leverage each agent's built-in features (hot reload, skill discovery, etc.)
 - **Simple and portable** - Shell scripts only. Works everywhere with no dependencies.
 

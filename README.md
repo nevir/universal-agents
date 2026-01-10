@@ -22,7 +22,7 @@ Configures your installed AI coding agents with complete [AGENTS.md](https://age
 
 AI coding agents shouldn't fragment your configuration. This project enables:
 
-- **Universal format** - Write AGENTS.md once, use it with Claude Code, Cursor, Gemini, and any future agent
+- **Universal format** - Write AGENTS.md once, use it across major AI agents (Claude Code, Cursor, Gemini)
 - **Standard locations** - `.agents/` and `AGENTS.md` files in predictable places, not scattered proprietary formats
 - **No rebuild step** - Edit AGENTS.md files, they just work. No commands to run after changes.
 - **Native behavior** - Leverage each agent's built-in features (hot reload, skill discovery, etc.)

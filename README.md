@@ -1,6 +1,6 @@
 # Universal Agents
 
-One install script. Standardized [AGENTS.md](https://agents.md) configuration and [Agent Skills](https://agentskills.io) support across Claude Code, Cursor, and Gemini.
+One install script. Standardized and centralized [AGENTS.md](https://agents.md) configuration and [Agent Skills](https://agentskills.io) support across Claude Code, Cursor, and Gemini.
 
 ## Installation
 
@@ -10,7 +10,7 @@ curl -fsSL https://raw.githubusercontent.com/agentsmd/universal-agents/main/inst
 
 ## What This Does
 
-Brings standardized support for [AGENTS.md](https://agents.md) and [Agent Skills](https://agentskills.io) to major AI coding agents. Most agents have incomplete or broken support natively - this fixes that.
+Brings standardized and centralized support for [AGENTS.md](https://agents.md) and [Agent Skills](https://agentskills.io) to major AI coding agents. Most agents have incomplete or broken support natively - this fixes that.
 
 **AGENTS.md features:**
 

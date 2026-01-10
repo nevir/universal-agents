@@ -835,7 +835,7 @@ show_help() {
 	printf "$(c heading Arguments:)\n"
 	printf "  $(c path PATH)             Project directory (default: current directory)\n"
 	printf "  $(c agent AGENTS...)        Agent names to configure\n"
-	printf "                   Valid agents: $(c_list agent $SUPPORTED_AGENTS)\n"
+	printf "                   Valid agents: $(c_list agent $SUPPORTED_AGENTS), or $(c option all) for all agents\n"
 	printf "                   If omitted, auto-detects installed agents\n\n"
 
 	printf "$(c heading Options:)\n"
@@ -848,8 +848,9 @@ show_help() {
 	printf "  install.sh                      # Auto-detect agents, interactive mode\n"
 	printf "  install.sh $(c agent claude)               # Only Claude, project mode\n"
 	printf "  install.sh $(c agent claude) $(c agent gemini)        # Multiple agents\n"
+	printf "  install.sh $(c option all)                  # Install all supported agents\n"
 	printf "  install.sh $(c flag --global)             # Global mode (user home)\n"
-	printf "  install.sh $(c flag --global) $(c agent claude)      # Claude only, global mode\n"
+	printf "  install.sh $(c flag --global) $(c option all)        # All agents, global mode\n"
 	printf "  install.sh $(c path /path/to/project)     # Specific directory\n"
 	printf "  install.sh $(c flag -y)                   # Auto-confirm, all agents\n"
 	printf "  install.sh $(c flag -n)                   # Dry-run mode\n\n"
@@ -899,27 +900,45 @@ main() {
 		set -- $positional_args
 		local first_arg="$1"
 
-		if list_contains "$first_arg" "$SUPPORTED_AGENTS"; then
-			if [ -e "$first_arg" ]; then
-				panic 2 <<-end_panic
-					Ambiguous argument: $(c agent "'$first_arg'")
-					This is both a valid agent name AND an existing path.
-					Please rename the file/directory or use an explicit path like $(c path "'./$first_arg'")
-				end_panic
-			fi
-			agents="$positional_args"
-		else
-			case "$first_arg" in
-				*/*|.|..)
-					project_dir="$first_arg"
-					shift
-					agents="$*"
-					;;
-				*)
-					panic 2 "Unknown agent: $(c agent "'$first_arg'") (valid agents: $(c_list agent $SUPPORTED_AGENTS))"
-					;;
-			esac
-		fi
+		# Check if first arg is "all" or a supported agent
+		case "$first_arg" in
+			all|All|ALL)
+				# "all" keyword - treat as agent specification
+				if [ -e "$first_arg" ]; then
+					panic 2 <<-end_panic
+						Ambiguous argument: $(c option "'$first_arg'")
+						This is the special $(c option all) keyword AND an existing path.
+						Please rename the file/directory or use an explicit path like $(c path "'./$first_arg'")
+					end_panic
+				fi
+				agents="$positional_args"
+				;;
+			*)
+				# Check if it's a supported agent
+				if list_contains "$first_arg" "$SUPPORTED_AGENTS"; then
+					if [ -e "$first_arg" ]; then
+						panic 2 <<-end_panic
+							Ambiguous argument: $(c agent "'$first_arg'")
+							This is both a valid agent name AND an existing path.
+							Please rename the file/directory or use an explicit path like $(c path "'./$first_arg'")
+						end_panic
+					fi
+					agents="$positional_args"
+				else
+					# Not a known agent or "all" - check if it's a path
+					case "$first_arg" in
+						*/*|.|..)
+							project_dir="$first_arg"
+							shift
+							agents="$*"
+							;;
+						*)
+							panic 2 "Unknown agent: $(c agent "'$first_arg'") (valid agents: $(c_list agent $SUPPORTED_AGENTS), or $(c option all))"
+							;;
+					esac
+				fi
+				;;
+		esac
 	fi
 
 	local enabled_agents=""
@@ -935,13 +954,21 @@ main() {
 		fi
 	else
 		# Agents specified on command line
-		for agent in $agents; do
-			if ! list_contains "$agent" "$SUPPORTED_AGENTS"; then
-				panic 2 "Unknown agent: $(c agent "'$agent'") (valid agents: $(c_list agent $SUPPORTED_AGENTS))"
-			fi
-			enabled_agents="$enabled_agents $agent"
-		done
-		enabled_agents=$(trim "$enabled_agents")
+		# Handle "all" keyword to install all supported agents
+		case "$agents" in
+			all|All|ALL)
+				enabled_agents="$SUPPORTED_AGENTS"
+				;;
+			*)
+				for agent in $agents; do
+					if ! list_contains "$agent" "$SUPPORTED_AGENTS"; then
+						panic 2 "Unknown agent: $(c agent "'$agent'") (valid agents: $(c_list agent $SUPPORTED_AGENTS), or $(c option all))"
+					fi
+					enabled_agents="$enabled_agents $agent"
+				done
+				enabled_agents=$(trim "$enabled_agents")
+				;;
+		esac
 	fi
 
 	# Validate the selected agents

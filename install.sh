@@ -498,8 +498,9 @@ template_claude_hook() {
 
 		NON-NEGOTIABLE: When working with any file or directory within the project:
 
-		1. Load ALL AGENTS.md files in the directory hierarchy matching that location.
-		   You do not have to reload AGENTS.md files you have already loaded previously.
+		1. Load ALL AGENTS.md files in the directory hierarchy matching that location
+		   BEFORE you start working on (reading/writing/etc) the file or directory. You
+		   do not have to reload AGENTS.md files you have already loaded previously.
 
 		2. ALWAYS apply instructions from the AGENTS.md files that match that location.
 		   When there are conflicting instructions, apply instructions from the

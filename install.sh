@@ -177,11 +177,11 @@ detect_installed_agents() {
 }
 
 prompt_agent_selection() {
-	printf "\n$(c heading 'Select agents to configure:')\n\n"
-	printf "  $(c agent claude)   - Claude Code\n"
-	printf "  $(c agent gemini)   - Gemini CLI\n"
-	printf "\n"
-	printf "Enter agent names (space-separated), or $(c option all) for all: "
+	printf "\n$(c heading 'Select agents to configure:')\n\n" >&2
+	printf "  $(c agent claude)   - Claude Code\n" >&2
+	printf "  $(c agent gemini)   - Gemini CLI\n" >&2
+	printf "\n" >&2
+	printf "Enter agent names (space-separated), or $(c option all) for all: " >&2
 	read -r response
 
 	response=$(trim "$response")
@@ -196,8 +196,8 @@ select_agents() {
 	installed=$(detect_installed_agents)
 
 	if [ -n "$installed" ]; then
-		printf "\n$(c heading 'Detected installed agents:') $(c_list agent $installed)\n\n"
-		printf "Install for these agents? [Y/n/select]: "
+		printf "\n$(c heading 'Detected installed agents:') $(c_list agent $installed)\n\n" >&2
+		printf "Install for these agents? [Y/n/select]: " >&2
 		read -r confirm
 
 		confirm=$(trim "$confirm")
@@ -207,7 +207,7 @@ select_agents() {
 			*)                    prompt_agent_selection ;;
 		esac
 	else
-		printf "\n$(c warning 'No supported agents detected on this system.')\n"
+		printf "\n$(c warning 'No supported agents detected on this system.')\n" >&2
 		prompt_agent_selection
 	fi
 }

@@ -22,7 +22,7 @@ cd "$REPO_ROOT"
 # Define agent-specific commands and settings paths
 # This centralizes agent configuration so new agents only need to be added here
 
-KNOWN_AGENTS="claude codex cursor-agent gemini"
+KNOWN_AGENTS="claude codex copilot cursor-agent gemini"
 
 agent_command() {
 	local agent="$1"
@@ -31,6 +31,7 @@ agent_command() {
 	case "$agent" in
 		claude)       echo "echo \"$prompt\" | claude --print" ;;
 		codex)        echo "echo \"$prompt\" | codex exec -" ;;
+		copilot)      echo "copilot -p \"$prompt\"" ;;
 		cursor-agent) echo "echo \"$prompt\" | cursor-agent --print" ;;
 		gemini)       echo "echo \"$prompt\" | gemini" ;;
 	esac
@@ -42,6 +43,7 @@ agent_settings_path() {
 	case "$agent" in
 		claude)       echo "$HOME/.claude/settings.json" ;;
 		codex)        echo "$HOME/.codex/config.toml" ;;
+		copilot)      echo "$HOME/.copilot/config.json" ;;
 		cursor-agent) echo "$HOME/.cursor-agent/settings.json" ;;
 		gemini)       echo "$HOME/.gemini/settings.json" ;;
 	esac

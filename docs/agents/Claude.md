@@ -274,7 +274,22 @@ CLAUDE.md supports importing external files:
 The universal-agents install script configures Claude Code to load AGENTS.md files via a SessionStart hook that:
 1. Finds all AGENTS.md files in the project
 2. Injects instructions for loading nested AGENTS.md files
-3. Pre-loads root `./AGENTS.md` if it exists
+3. Pre-loads `~/AGENTS.md` if it exists (global installs only)
+4. Pre-loads root `./AGENTS.md` if it exists
+
+### Global AGENTS.md Support
+
+When universal-agents is installed globally (`install.sh --global`), the SessionStart hook will also load `~/AGENTS.md` if it exists. This enables:
+- User-wide agent configuration that applies to all projects
+- Personal coding standards and preferences
+- Common instructions shared across all development work
+
+**Precedence hierarchy** (from lowest to highest priority):
+- `~/AGENTS.md` (global - applies to all projects)
+- `./AGENTS.md` (project root - applies to this entire project)
+- Nested AGENTS.md files (directory-specific - applies to subdirectories)
+
+More specific files always override more general ones, allowing project-specific configurations to take precedence over global settings.
 
 ### Skills Integration
 

@@ -1,10 +1,39 @@
+# ============================================
+# Polyfill Mode Helpers
+# ============================================
+
+# Run polyfill from project location (repo mode)
+run_polyfill_repo() {
+	local project_dir="$1"
+	CLAUDE_PROJECT_DIR="$project_dir" sh "$REPO_ROOT/.agents/polyfills/claude/agentsmd.sh"
+}
+
+# Run polyfill from global location (global mode)
+run_polyfill_global() {
+	local project_dir="$1"
+	# Copy script to global location if not already there
+	if [ ! -f "$HOME/.agents/polyfills/claude/agentsmd.sh" ]; then
+		mkdir -p "$HOME/.agents/polyfills/claude"
+		cp "$REPO_ROOT/.agents/polyfills/claude/agentsmd.sh" "$HOME/.agents/polyfills/claude/agentsmd.sh"
+	fi
+	CLAUDE_PROJECT_DIR="$project_dir" sh "$HOME/.agents/polyfills/claude/agentsmd.sh"
+}
+
+# Clean up global polyfill
+cleanup_global_polyfill() {
+	rm -f "$HOME/.agents/polyfills/claude/agentsmd.sh"
+}
+
+# ============================================
+# Tests
+# ============================================
 
 test_no_agentsmd_files() {
 	local project_dir="$1"
 
 	# Run the polyfill script with no AGENTS.md files
 	local output
-	output=$(CLAUDE_PROJECT_DIR="$project_dir" sh "$REPO_ROOT/.agents/polyfills/claude/agentsmd.sh")
+	output=$(run_polyfill_repo "$project_dir")
 	local exit_code=$?
 
 	# Should exit with 0 and produce no output
@@ -148,4 +177,171 @@ test_empty_agentsmd_file() {
 	echo "$output" | grep -q "./AGENTS.md" &&
 	echo "$output" | grep -q '<agentsmd path="./AGENTS.md">' &&
 	echo "$output" | grep -q "</agentsmd>"
+}
+
+test_global_agentsmd_with_project_install() {
+	local project_dir="$1"
+
+	# Create a global ~/AGENTS.md
+	local home_agentsmd_backup=""
+	if [ -f "$HOME/AGENTS.md" ]; then
+		home_agentsmd_backup=$(cat "$HOME/AGENTS.md")
+	fi
+
+	cat > "$HOME/AGENTS.md" <<-end_global
+		# Global Instructions
+		This should NOT appear when running from project install.
+	end_global
+
+	# Create a project AGENTS.md
+	cat > "$project_dir/AGENTS.md" <<-end_project
+		# Project Instructions
+	end_project
+
+	# Run from project install location (repo mode)
+	local output
+	output=$(run_polyfill_repo "$project_dir")
+
+	local result=0
+	# Should include project AGENTS.md
+	echo "$output" | grep -q "# Project Instructions" || result=1
+	# Should NOT include global AGENTS.md (not a global install)
+	echo "$output" | grep -q "# Global Instructions" && result=1
+	echo "$output" | grep -q '<agentsmd path="~/AGENTS.md">' && result=1
+
+	# Restore backup
+	if [ -n "$home_agentsmd_backup" ]; then
+		echo "$home_agentsmd_backup" > "$HOME/AGENTS.md"
+	else
+		rm -f "$HOME/AGENTS.md"
+	fi
+
+	return $result
+}
+
+test_global_agentsmd_with_global_install() {
+	local project_dir="$1"
+
+	# Create a global ~/AGENTS.md
+	local home_agentsmd_backup=""
+	if [ -f "$HOME/AGENTS.md" ]; then
+		home_agentsmd_backup=$(cat "$HOME/AGENTS.md")
+	fi
+
+	cat > "$HOME/AGENTS.md" <<-end_global
+		# Global Instructions
+		This should appear when running from global install.
+	end_global
+
+	# Create a project AGENTS.md
+	cat > "$project_dir/AGENTS.md" <<-end_project
+		# Project Instructions
+	end_project
+
+	# Run from global install location (global mode)
+	local output
+	output=$(run_polyfill_global "$project_dir")
+
+	local result=0
+	# Should include both global and project AGENTS.md
+	echo "$output" | grep -q "# Global Instructions" || result=1
+	echo "$output" | grep -q "# Project Instructions" || result=1
+	echo "$output" | grep -q '<agentsmd path="~/AGENTS.md">' || result=1
+	echo "$output" | grep -q '<agentsmd path="./AGENTS.md">' || result=1
+
+	# Clean up
+	cleanup_global_polyfill
+	if [ -n "$home_agentsmd_backup" ]; then
+		echo "$home_agentsmd_backup" > "$HOME/AGENTS.md"
+	else
+		rm -f "$HOME/AGENTS.md"
+	fi
+
+	return $result
+}
+
+test_global_agentsmd_only() {
+	local project_dir="$1"
+
+	# Create a global ~/AGENTS.md
+	local home_agentsmd_backup=""
+	if [ -f "$HOME/AGENTS.md" ]; then
+		home_agentsmd_backup=$(cat "$HOME/AGENTS.md")
+	fi
+
+	cat > "$HOME/AGENTS.md" <<-end_global
+		# Global Only
+		No project-specific instructions.
+	end_global
+
+	# No project AGENTS.md - only global
+
+	# Run from global install location (global mode)
+	local output
+	output=$(run_polyfill_global "$project_dir")
+
+	local result=0
+	# Should include global AGENTS.md
+	echo "$output" | grep -q "# Global Only" || result=1
+	echo "$output" | grep -q '<agentsmd path="~/AGENTS.md">' || result=1
+	# Should NOT include project AGENTS.md content (doesn't exist)
+	echo "$output" | grep -qF "The content of ./AGENTS.md is as follows:" && result=1 || true
+
+	# Clean up
+	cleanup_global_polyfill
+	if [ -n "$home_agentsmd_backup" ]; then
+		echo "$home_agentsmd_backup" > "$HOME/AGENTS.md"
+	else
+		rm -f "$HOME/AGENTS.md"
+	fi
+
+	return $result
+}
+
+test_precedence_hierarchy() {
+	local project_dir="$1"
+
+	# Create global, project root, and nested AGENTS.md files
+	local home_agentsmd_backup=""
+	if [ -f "$HOME/AGENTS.md" ]; then
+		home_agentsmd_backup=$(cat "$HOME/AGENTS.md")
+	fi
+
+	cat > "$HOME/AGENTS.md" <<-end_global
+		# Level 1: Global
+	end_global
+
+	cat > "$project_dir/AGENTS.md" <<-end_root
+		# Level 2: Project Root
+	end_root
+
+	mkdir -p "$project_dir/subfolder"
+	cat > "$project_dir/subfolder/AGENTS.md" <<-end_subfolder
+		# Level 3: Subfolder
+	end_subfolder
+
+	# Run from global install location (global mode)
+	local output
+	output=$(run_polyfill_global "$project_dir")
+
+	local result=0
+	# Verify instructions mention the precedence hierarchy
+	echo "$output" | grep -q "Precedence hierarchy" || result=1
+	# Verify all levels are mentioned
+	echo "$output" | grep -q "~/AGENTS.md (global" || result=1
+	echo "$output" | grep -q "./AGENTS.md (project root" || result=1
+	# Verify global and root are loaded (subfolder listed but not loaded)
+	echo "$output" | grep -q "# Level 1: Global" || result=1
+	echo "$output" | grep -q "# Level 2: Project Root" || result=1
+	echo "$output" | grep -q "./subfolder/AGENTS.md" || result=1
+
+	# Clean up
+	cleanup_global_polyfill
+	if [ -n "$home_agentsmd_backup" ]; then
+		echo "$home_agentsmd_backup" > "$HOME/AGENTS.md"
+	else
+		rm -f "$HOME/AGENTS.md"
+	fi
+
+	return $result
 }

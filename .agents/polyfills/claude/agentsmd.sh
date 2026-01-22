@@ -6,9 +6,24 @@
 # [1]: https://blueoakcouncil.org/license/1.0.0
 # [2]: https://www.apache.org/licenses/LICENSE-2.0
 
+# Detect if this is a global install by checking script location
+script_dir=$(cd "$(dirname "$0")" && pwd)
+is_global_install=0
+case "$script_dir" in
+	"$HOME"/.agents/polyfills*) is_global_install=1 ;;
+esac
+
 cd "$CLAUDE_PROJECT_DIR"
 agent_files=$(find . -name "AGENTS.md" -type f)
-[ -z "$agent_files" ] && exit 0
+
+# Check for global ~/AGENTS.md (only for global installs)
+has_global_agentsmd=0
+if [ $is_global_install -eq 1 ] && [ -f "$HOME/AGENTS.md" ]; then
+	has_global_agentsmd=1
+fi
+
+# Exit if no AGENTS.md files found anywhere
+[ -z "$agent_files" ] && [ $has_global_agentsmd -eq 0 ] && exit 0
 
 cat <<end_context
 <agentsmd_instructions>
@@ -43,13 +58,28 @@ NON-NEGOTIABLE: When working with any file or directory within the project:
        - Instructions from root "AGENTS.md" apply only if not overridden
    </example>
 
-3. If there is a root ./AGENTS.md file, ALWAYS apply its instructions to ALL
-   work within the project, as everything you do is within scope of the project.
-   Precedence rules still apply for conflicting instructions.
+3. Precedence hierarchy (from lowest to highest priority):
+   - ~/AGENTS.md (global - applies to all projects)
+   - ./AGENTS.md (project root - applies to this entire project)
+   - Nested AGENTS.md files (directory-specific - applies to subdirectories)
+
+   More specific files ALWAYS override more general ones.
 </agentsmd_instructions>
 end_context
 
-# If there is a root AGENTS.md, load it now because it always applies.
+# Load global ~/AGENTS.md if it exists (lowest precedence)
+if [ $has_global_agentsmd -eq 1 ]; then
+	cat <<-end_global_context
+
+		The content of ~/AGENTS.md is as follows:
+
+		<agentsmd path="~/AGENTS.md">
+		$(cat "$HOME/AGENTS.md")
+		</agentsmd>
+	end_global_context
+fi
+
+# Load project root AGENTS.md if it exists (higher precedence than global)
 if [ -f "./AGENTS.md" ]; then
 cat <<-end_root_context
 

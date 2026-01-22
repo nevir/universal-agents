@@ -1,0 +1,60 @@
+name: Claude Code
+
+# Security: This workflow is designed to be safe in public repositories
+# See docs/github-actions-security.md for detailed security analysis
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    # Only run when @claude is mentioned
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+
+    # Principle of least privilege: Only grant necessary permissions
+    permissions:
+      contents: write       # Required to push commits and create branches
+      pull-requests: write  # Required to create and comment on PRs
+      issues: write         # Required to comment on issues
+      id-token: write       # Required for OIDC authentication
+      actions: read         # Required for Claude to read CI results on PRs
+
+    steps:
+      - name: Harden the runner (optional but recommended)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit  # Logs all outbound network connections for security monitoring
+          disable-sudo: true    # Prevents privilege escalation
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # Customize Claude's behavior with CLI arguments
+          claude_args: |
+            --model claude-sonnet-4-5-20250929
+            --max-turns 10
+            --system-prompt "Follow the project's AGENTS.md guidelines. Ensure all shell scripts follow the style guide. Add tests for new functionality."
+
+          # Security: show_full_output is disabled by default to prevent
+          # accidental exposure of sensitive information in public logs
+          # show_full_output: false  # (default)

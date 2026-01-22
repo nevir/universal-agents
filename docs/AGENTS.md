@@ -6,14 +6,16 @@ This directory contains reference documentation for AI coding agents and their c
 
 ```
 docs/
-├── AGENTS.md           # This file - index and guidelines
-├── Comparison.md       # Comparison with similar projects
-└── agents/             # Per-agent configuration references
-    ├── Claude.md       # Claude Code configuration
-    ├── Gemini.md       # Gemini CLI configuration
-    ├── Cursor.md       # Cursor CLI configuration (future)
-    ├── Aider.md        # Aider configuration (future)
-    └── Codex.md        # OpenAI Codex configuration (future)
+├── AGENTS.md                    # This file - index and guidelines
+├── Comparison.md                # Comparison with similar projects
+├── github-actions-security.md   # Claude GitHub Action security analysis
+├── github-actions-setup.md      # Claude GitHub Action setup guide
+└── agents/                      # Per-agent configuration references
+    ├── Claude.md                # Claude Code configuration
+    ├── Gemini.md                # Gemini CLI configuration
+    ├── Cursor.md                # Cursor CLI configuration (future)
+    ├── Aider.md                 # Aider configuration (future)
+    └── Codex.md                 # OpenAI Codex configuration (future)
 ```
 
 ## Documentation
@@ -26,6 +28,11 @@ docs/
   - **Agent-Specific Systems**: Detailed coverage of 10+ coding agents (Continue.dev, Windsurf, Cline, Tabnine, Copilot, Replit Agent, OpenHands, Cody)
   - **Context Engineering**: Security considerations, best practices, and tooling
   - **Industry Trends**: Standardization efforts, emerging patterns, Linux Foundation initiatives
+
+### GitHub Actions Integration
+
+- **[GitHub Actions Security Analysis](github-actions-security.md)** - Comprehensive security analysis for using Claude GitHub Actions in public repositories
+- **[GitHub Actions Setup Guide](github-actions-setup.md)** - Step-by-step setup instructions for the Claude GitHub Action
 
 ### Agent Documentation
 

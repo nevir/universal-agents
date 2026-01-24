@@ -49,44 +49,91 @@ agent_settings_path() {
 	esac
 }
 
-# Get the polyfill path for an agent (if different from default)
-agent_polyfill_path() {
+# Get the agent's config directory name (for credential copying)
+agent_config_dir() {
 	local agent="$1"
 
 	case "$agent" in
-		claude) echo "$HOME/.agents/polyfills/claude/agentsmd.sh" ;;
+		claude)       echo ".claude" ;;
+		codex)        echo ".codex" ;;
+		copilot)      echo ".copilot" ;;
+		cursor-agent) echo ".cursor-agent" ;;
+		gemini)       echo ".gemini" ;;
 	esac
 }
 
-# Backup agent settings before global install
-backup_agent_settings() {
+# Get the agent's skills directory path (relative to project root)
+agent_skills_dir() {
 	local agent="$1"
-	local settings_path
-	local backup=""
 
-	settings_path=$(agent_settings_path "$agent")
-
-	if [ -f "$settings_path" ]; then
-		backup=$(cat "$settings_path")
-	fi
-
-	echo "$backup"
+	case "$agent" in
+		claude)       echo ".claude/skills" ;;
+		codex)        echo ".codex/skills" ;;
+		copilot)      echo ".github/skills" ;;
+		cursor-agent) echo ".cursor-agent/skills" ;;
+		gemini)       echo ".gemini/skills" ;;
+	esac
 }
 
-# Restore agent settings after global install
-restore_agent_settings() {
+# Copy agent credentials from real HOME to temp HOME
+# Copies the agent's config directory and root-level config files,
+# but excludes settings files that will be created by install.sh
+copy_agent_credentials() {
 	local agent="$1"
-	local backup="$2"
-	local settings_path
+	local real_home="$2"
+	local temp_home="$3"
 
-	settings_path=$(agent_settings_path "$agent")
+	local config_dir
+	config_dir=$(agent_config_dir "$agent")
+	[ -z "$config_dir" ] && return 0
 
-	if [ -n "$backup" ]; then
-		mkdir -p "$(dirname "$settings_path")"
-		echo "$backup" > "$settings_path"
-	else
-		rm -f "$settings_path"
+	local src="$real_home/$config_dir"
+	local dst="$temp_home/$config_dir"
+
+	# Copy agent config directory if it exists
+	if [ -d "$src" ]; then
+		mkdir -p "$dst"
+		cp -R "$src/"* "$src/".* "$dst/" 2>/dev/null || true
+
+		# Remove settings files that will be created by install.sh
+		# (we want fresh settings, but keep credentials)
+		rm -f "$dst/settings.json" 2>/dev/null || true
+		rm -f "$dst/settings.local.json" 2>/dev/null || true
+		rm -f "$dst/config.toml" 2>/dev/null || true
+		rm -f "$dst/config.json" 2>/dev/null || true
 	fi
+
+	# Copy root-level config files (some agents store credentials here)
+	case "$agent" in
+		claude)
+			[ -f "$real_home/.claude.json" ] && cp "$real_home/.claude.json" "$temp_home/"
+			;;
+		gemini)
+			[ -f "$real_home/.gemini.json" ] && cp "$real_home/.gemini.json" "$temp_home/"
+			;;
+	esac
+}
+
+# Get API key from system keychain for an agent
+# Returns the API key or empty string if not found
+get_agent_api_key() {
+	local agent="$1"
+
+	case "$agent" in
+		claude)
+			security find-generic-password -s "Claude Code" -w 2>/dev/null || true
+			;;
+	esac
+}
+
+# Get the environment variable name for an agent's API key
+agent_api_key_env_var() {
+	local agent="$1"
+
+	case "$agent" in
+		claude) echo "ANTHROPIC_API_KEY" ;;
+		gemini) echo "GOOGLE_API_KEY" ;;
+	esac
 }
 
 # ============================================
@@ -151,6 +198,7 @@ run_test() {
 	local mode="$3"
 	local test_dir="$TESTS_DIR/$test_name"
 	local sandbox_dir="$test_dir/sandbox"
+	local global_dir="$test_dir/global"
 
 	if [ ! -f "$test_dir/prompt.md" ]; then
 		panic 2 "$test_dir/prompt.md not found"
@@ -159,33 +207,73 @@ run_test() {
 		panic 2 "$test_dir/expected.md not found"
 	fi
 
-	# Create isolated temp directory for test
-	if [ ! -d "$sandbox_dir" ]; then
-		panic 2 "$sandbox_dir not found"
-	fi
-
-	# Create temp dir and copy sandbox into it
+	# Create isolated temp directory for test (project working directory)
 	local temp_dir
 	temp_dir=$(mktemp -d -t "universal-agents-test-XXXXXX")
-	cp -R "$sandbox_dir/"* "$sandbox_dir/".* "$temp_dir/" 2>/dev/null || true
 
-	# For global mode, backup existing settings before install
-	local settings_backup=""
-	local polyfill_backup=""
-	if [ "$mode" = "global" ]; then
-		settings_backup=$(backup_agent_settings "$agent")
-		local polyfill_path=$(agent_polyfill_path "$agent")
-		if [ -n "$polyfill_path" ] && [ -f "$polyfill_path" ]; then
-			polyfill_backup=$(cat "$polyfill_path")
-		fi
+	# Copy sandbox contents if it exists (sandbox is optional)
+	if [ -d "$sandbox_dir" ]; then
+		cp -R "$sandbox_dir/"* "$sandbox_dir/".* "$temp_dir/" 2>/dev/null || true
+	fi
+
+	# Create temp home directory for isolated global installs
+	local temp_home
+	temp_home=$(mktemp -d -t "universal-agents-home-XXXXXX")
+
+	# Copy agent credentials from real HOME (for authentication)
+	# This copies the agent's config dir but removes settings files
+	copy_agent_credentials "$agent" "$HOME" "$temp_home"
+
+	# Copy global directory contents to temp home if it exists
+	# (these can override/add to what was copied from credentials)
+	if [ -d "$global_dir" ]; then
+		cp -R "$global_dir/"* "$global_dir/".* "$temp_home/" 2>/dev/null || true
+	fi
+
+	# Get API key from keychain before changing HOME
+	# (keychain access may depend on original HOME)
+	local api_key
+	api_key=$(get_agent_api_key "$agent")
+
+	# Save original HOME and override it for test isolation
+	local original_home="$HOME"
+	export HOME="$temp_home"
+
+	# Export API key if we got one from keychain
+	local api_key_env_var
+	api_key_env_var=$(agent_api_key_env_var "$agent")
+	if [ -n "$api_key" ] && [ -n "$api_key_env_var" ]; then
+		export "$api_key_env_var=$api_key"
 	fi
 
 	# Change to temp dir and run install (unless level is "none")
 	cd "$temp_dir"
 	if [ "$INSTALL_LEVEL" != "none" ]; then
 		local install_flags="-y --level $INSTALL_LEVEL"
-		[ "$mode" = "global" ] && install_flags="$install_flags --global"
-		"$REPO_ROOT/install.sh" $install_flags > /dev/null 2>&1
+		case "$mode" in
+			project)
+				"$REPO_ROOT/install.sh" $install_flags > /dev/null 2>&1
+				;;
+			global)
+				"$REPO_ROOT/install.sh" $install_flags --global > /dev/null 2>&1
+				;;
+			combined)
+				# Run both: global first, then project overlay
+				"$REPO_ROOT/install.sh" $install_flags --global > /dev/null 2>&1
+				"$REPO_ROOT/install.sh" $install_flags > /dev/null 2>&1
+				;;
+		esac
+	fi
+
+	# For global/combined mode with global skills, create the skills symlink
+	# (normally the hook does this at runtime, but skills discovery happens first)
+	if { [ "$mode" = "global" ] || [ "$mode" = "combined" ]; } && [ -d "$temp_home/.agents/skills" ]; then
+		local agent_skills_target
+		agent_skills_target=$(agent_skills_dir "$agent")
+		if [ -n "$agent_skills_target" ] && [ ! -e "$temp_dir/$agent_skills_target" ]; then
+			mkdir -p "$(dirname "$temp_dir/$agent_skills_target")"
+			ln -s "$temp_home/.agents/skills" "$temp_dir/$agent_skills_target"
+		fi
 	fi
 
 	prompt=$(cat "$test_dir/prompt.md")
@@ -202,6 +290,8 @@ run_test() {
 		printf "  $(c test $test_name)\n"
 		printf "    $(c heading Temp dir:)\n"
 		print_indented 6 "$temp_dir"
+		printf "    $(c heading Temp home:)\n"
+		print_indented 6 "$temp_home"
 		printf "    $(c heading Command:)\n"
 		print_indented 6 "$TEST_COMMAND"
 		printf "    $(c heading Full output:)\n"
@@ -218,11 +308,18 @@ run_test() {
 	local extracted_answer=$(extract_answer "$output")
 	extracted_answer=$(trim "$extracted_answer")
 
+	# Restore HOME and unset API key
+	export HOME="$original_home"
+	if [ -n "$api_key_env_var" ]; then
+		unset "$api_key_env_var"
+	fi
+
 	# Set these for display_result
 	TEST_EXPECTED="$expected"
 	TEST_GOT="$output"
 	TEST_EXTRACTED="$extracted_answer"
 	TEST_TEMP_DIR="$temp_dir"
+	TEST_TEMP_HOME="$temp_home"
 
 	# Check if answer tags were found
 	if [ -z "$extracted_answer" ]; then
@@ -232,27 +329,13 @@ run_test() {
 
 	local test_result=0
 	if [ "$extracted_answer" = "$expected" ]; then
-		# Clean up temp dir on success
+		# Clean up temp directories on success
 		rm -rf "$temp_dir"
+		rm -rf "$temp_home"
 		test_result=0
 	else
-		# Keep temp dir on failure for debugging
+		# Keep temp directories on failure for debugging
 		test_result=1
-	fi
-
-	# Restore backups for global mode
-	if [ "$mode" = "global" ]; then
-		restore_agent_settings "$agent" "$settings_backup"
-
-		local polyfill_path=$(agent_polyfill_path "$agent")
-		if [ -n "$polyfill_path" ]; then
-			if [ -n "$polyfill_backup" ]; then
-				mkdir -p "$(dirname "$polyfill_path")"
-				echo "$polyfill_backup" > "$polyfill_path"
-			else
-				rm -f "$polyfill_path"
-			fi
-		fi
 	fi
 
 	return $test_result
@@ -289,13 +372,16 @@ display_result() {
 			printf "    $(c heading Expected:)\n"
 			printf "      %s\n" "$TEST_EXPECTED"
 			printf "    $(c error Result:) $(c error FAIL)\n"
-			printf "    $(c heading Debug:) Temp dir preserved at:\n"
-			printf "      %s\n" "$TEST_TEMP_DIR"
+			printf "    $(c heading Debug:) Temp directories preserved at:\n"
+			printf "      Project: %s\n" "$TEST_TEMP_DIR"
+			printf "      Home:    %s\n" "$TEST_TEMP_HOME"
 		else
 			# In normal mode, show everything for failures
 			print_test_fail "$display_name"
 			printf "    $(c heading Temp dir:)\n"
 			print_indented 6 "$TEST_TEMP_DIR"
+			printf "    $(c heading Temp home:)\n"
+			print_indented 6 "$TEST_TEMP_HOME"
 			printf "    $(c heading Command:)\n"
 			print_indented 6 "$TEST_COMMAND"
 			printf "    $(c heading Full output:)\n"
@@ -333,12 +419,21 @@ show_help() {
 	printf "$(c heading Options:)\n"
 	printf "  -h, --help           Show this help message\n"
 	printf "  -v, --verbose        Show full output for all tests\n"
-	printf "  --mode $(c option MODE)      Installation mode to test: project, global, or all\n"
-	printf "                       (default: $(c option all))\n"
+	printf "  --mode $(c option MODE)      Installation mode to test (default: $(c option all))\n"
+	printf "                       $(c option project):  Project-level install only\n"
+	printf "                       $(c option global):   Global install only\n"
+	printf "                       $(c option combined): Global + project install (layered)\n"
+	printf "                       $(c option all):      All three modes\n"
 	printf "  --install $(c option LEVEL)  Installation level: $(c option none), $(c option config), or $(c option full) (default)\n"
 	printf "                       $(c option none):   Skip install (test native agent support)\n"
 	printf "                       $(c option config): Config only (no polyfill hooks)\n"
 	printf "                       $(c option full):   Complete installation with hooks\n\n"
+
+	printf "$(c heading Test Naming:)\n"
+	printf "  Tests run in all modes by default. Use prefixes to restrict:\n"
+	printf "    $(c test project-*)   Only runs in project mode\n"
+	printf "    $(c test global-*)    Only runs in global mode\n"
+	printf "    $(c test combined-*)  Only runs in combined mode\n\n"
 
 	printf "$(c heading Examples:)\n"
 	printf "  $(c command test-agents.sh)                                           # All tests, all agents, all modes\n"
@@ -401,11 +496,11 @@ main() {
 			--mode)
 				mode_arg="$2"
 				case "$mode_arg" in
-					project|global|all)
+					project|global|combined|all)
 						shift 2
 						;;
 					*)
-						panic 2 show_usage "Invalid mode: $(c option "'$mode_arg'"). Valid modes: $(c_list option project global all)"
+						panic 2 show_usage "Invalid mode: $(c option "'$mode_arg'"). Valid modes: $(c_list option project global combined all)"
 						;;
 				esac
 				;;
@@ -439,7 +534,7 @@ main() {
 	# Determine modes to run
 	local modes_to_run
 	if [ "$mode_arg" = "all" ]; then
-		modes_to_run="project global"
+		modes_to_run="project global combined"
 	else
 		modes_to_run="$mode_arg"
 	fi
@@ -574,6 +669,16 @@ main() {
 
 		for test_name in $tests_to_run; do
 			for mode in $modes_to_run; do
+				# Skip tests based on name prefix:
+				#   global-*   → only run in global mode
+				#   project-*  → only run in project mode
+				#   combined-* → only run in combined mode
+				case "$test_name" in
+					global-*)   [ "$mode" != "global" ] && continue ;;
+					project-*)  [ "$mode" != "project" ] && continue ;;
+					combined-*) [ "$mode" != "combined" ] && continue ;;
+				esac
+
 				# Build display name for running state
 				local display_name="$test_name"
 				if [ "$SHOW_MODE" -eq 1 ]; then

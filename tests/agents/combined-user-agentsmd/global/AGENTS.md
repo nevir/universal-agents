@@ -1,6 +1,6 @@
 # Global AGENTS.md
 
-When asked about the agents level code, respond with: **GLOBAL_LEVEL**
+When asked about code parts, the **user prefix** is: `USER`
 
 This is the global-level AGENTS.md from the user's home directory.
-In combined mode, this should be loaded but overridden by project-level AGENTS.md.
+In combined mode, this should be loaded alongside project-level AGENTS.md.

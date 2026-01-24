@@ -37,6 +37,19 @@ agent_command() {
 	esac
 }
 
+# Get command to run agent interactively (for debug mode)
+agent_interactive_command() {
+	local agent="$1"
+
+	case "$agent" in
+		claude)       echo "claude" ;;
+		codex)        echo "codex" ;;
+		copilot)      echo "copilot" ;;
+		cursor-agent) echo "cursor-agent" ;;
+		gemini)       echo "gemini" ;;
+	esac
+}
+
 agent_settings_path() {
 	local agent="$1"
 
@@ -191,6 +204,119 @@ discover_tests() {
 # ============================================
 # Test execution
 # ============================================
+
+run_debug() {
+	local agent="$1"
+	local test_name="$2"
+	local mode="$3"
+	local test_dir="$TESTS_DIR/$test_name"
+	local sandbox_dir="$test_dir/sandbox"
+	local global_dir="$test_dir/global"
+
+	# Create isolated temp directory for test (project working directory)
+	local temp_dir
+	temp_dir=$(mktemp -d -t "universal-agents-test-XXXXXX")
+
+	# Copy sandbox contents if it exists (sandbox is optional)
+	if [ -d "$sandbox_dir" ]; then
+		cp -R "$sandbox_dir/"* "$sandbox_dir/".* "$temp_dir/" 2>/dev/null || true
+	fi
+
+	# Create temp home directory for isolated global installs
+	local temp_home
+	temp_home=$(mktemp -d -t "universal-agents-home-XXXXXX")
+
+	# Copy agent credentials from real HOME (for authentication)
+	copy_agent_credentials "$agent" "$HOME" "$temp_home"
+
+	# Copy global directory contents to temp home if it exists
+	if [ -d "$global_dir" ]; then
+		cp -R "$global_dir/"* "$global_dir/".* "$temp_home/" 2>/dev/null || true
+	fi
+
+	# Get API key from keychain before changing HOME
+	local api_key
+	api_key=$(get_agent_api_key "$agent")
+
+	# Save original HOME and override it for test isolation
+	local original_home="$HOME"
+	export HOME="$temp_home"
+
+	# Export API key if we got one from keychain
+	local api_key_env_var
+	api_key_env_var=$(agent_api_key_env_var "$agent")
+	if [ -n "$api_key" ] && [ -n "$api_key_env_var" ]; then
+		export "$api_key_env_var=$api_key"
+	fi
+
+	# Change to temp dir and run install (unless level is "none")
+	cd "$temp_dir"
+	if [ "$INSTALL_LEVEL" != "none" ]; then
+		local install_flags="-y --level $INSTALL_LEVEL"
+		case "$mode" in
+			project)
+				"$REPO_ROOT/install.sh" $install_flags > /dev/null 2>&1
+				;;
+			global)
+				"$REPO_ROOT/install.sh" $install_flags --global > /dev/null 2>&1
+				;;
+			combined)
+				"$REPO_ROOT/install.sh" $install_flags --global > /dev/null 2>&1
+				"$REPO_ROOT/install.sh" $install_flags > /dev/null 2>&1
+				;;
+		esac
+	fi
+
+	# For global/combined mode with global skills, create the skills symlink
+	if { [ "$mode" = "global" ] || [ "$mode" = "combined" ]; } && [ -d "$temp_home/.agents/skills" ]; then
+		local agent_skills_target
+		agent_skills_target=$(agent_skills_dir "$agent")
+		if [ -n "$agent_skills_target" ] && [ ! -e "$temp_dir/$agent_skills_target" ]; then
+			mkdir -p "$(dirname "$temp_dir/$agent_skills_target")"
+			ln -s "$temp_home/.agents/skills" "$temp_dir/$agent_skills_target"
+		fi
+	fi
+
+	# Show test info
+	printf "$(c heading 'Test files:')\n"
+	printf "  Prompt:   $(c path "$test_dir/prompt.md")\n"
+	printf "  Expected: $(c path "$test_dir/expected.md")\n\n"
+
+	printf "$(c heading 'Environment:')\n"
+	printf "  Temp dir:  $(c path "$temp_dir")\n"
+	printf "  Temp home: $(c path "$temp_home")\n"
+	printf "  HOME:      $(c path "$HOME")\n\n"
+
+	printf "$(c heading 'Prompt from test:')\n"
+	cat "$test_dir/prompt.md" | sed 's/^/  /'
+	printf "\n"
+
+	printf "$(c heading 'Expected answer:')\n"
+	cat "$test_dir/expected.md" | sed 's/^/  /'
+	printf "\n"
+
+	printf "$(c heading 'Starting interactive session...')\n\n"
+
+	# Run agent interactively
+	local interactive_cmd
+	interactive_cmd=$(agent_interactive_command "$agent")
+	eval "$interactive_cmd"
+	local exit_code=$?
+
+	# Restore HOME
+	export HOME="$original_home"
+	if [ -n "$api_key_env_var" ]; then
+		unset "$api_key_env_var"
+	fi
+
+	# Cleanup
+	printf "\n$(c heading 'Debug session ended.')\n"
+	printf "Temp directories preserved for inspection:\n"
+	printf "  Project: $(c path "$temp_dir")\n"
+	printf "  Home:    $(c path "$temp_home")\n\n"
+
+	return $exit_code
+}
 
 run_test() {
 	local agent="$1"
@@ -417,17 +543,18 @@ show_help() {
 	printf "  - Use $(c agent all) for all agents or $(c test all) for all tests\n\n"
 
 	printf "$(c heading Options:)\n"
-	printf "  -h, --help           Show this help message\n"
-	printf "  -v, --verbose        Show full output for all tests\n"
-	printf "  --mode $(c option MODE)      Installation mode to test (default: $(c option all))\n"
-	printf "                       $(c option project):  Project-level install only\n"
-	printf "                       $(c option global):   Global install only\n"
-	printf "                       $(c option combined): Global + project install (layered)\n"
-	printf "                       $(c option all):      All three modes\n"
-	printf "  --install $(c option LEVEL)  Installation level: $(c option none), $(c option config), or $(c option full) (default)\n"
-	printf "                       $(c option none):   Skip install (test native agent support)\n"
-	printf "                       $(c option config): Config only (no polyfill hooks)\n"
-	printf "                       $(c option full):   Complete installation with hooks\n\n"
+	printf "  $(c flag -h), $(c flag --help)        Show this help message\n"
+	printf "  $(c flag -v), $(c flag --verbose)     Show full output for all tests\n"
+	printf "  $(c flag --debug) $(c option MODE)      Run one test interactively for debugging\n"
+	printf "  $(c flag --mode) $(c option MODE)       Installation mode (default: $(c option all))\n"
+	printf "                      $(c option project):  Project-level install only\n"
+	printf "                      $(c option global):   Global install only\n"
+	printf "                      $(c option combined): Global + project install (layered)\n"
+	printf "                      $(c option all):      All three modes\n"
+	printf "  $(c flag --install) $(c option LEVEL)   Installation level (default: $(c option full))\n"
+	printf "                      $(c option none):     Skip install (test native agent support)\n"
+	printf "                      $(c option config):   Config only (no polyfill hooks)\n"
+	printf "                      $(c option full):     Complete installation with hooks\n\n"
 
 	printf "$(c heading Test Naming:)\n"
 	printf "  Tests run in all modes by default. Use prefixes to restrict:\n"
@@ -436,25 +563,18 @@ show_help() {
 	printf "    $(c test combined-*)  Only runs in combined mode\n\n"
 
 	printf "$(c heading Examples:)\n"
-	printf "  $(c command test-agents.sh)                                           # All tests, all agents, all modes\n"
-	printf "  $(c command test-agents.sh) $(c agent claude)                                    # All tests on claude, all modes\n"
-	printf "  $(c command test-agents.sh) --mode $(c option global) $(c agent claude)                  # All tests on claude, global mode\n"
-	printf "  $(c command test-agents.sh) $(c agent claude) $(c agent gemini)                             # All tests on claude and gemini, all modes\n"
-	printf "  $(c command test-agents.sh) $(c test basic-load)                                # basic-load on all agents, all modes\n"
-	printf "  $(c command test-agents.sh) $(c test basic-load) $(c test nested-precedence)             # Two tests on all agents, all modes\n"
-	printf "  $(c command test-agents.sh) $(c agent claude) $(c test basic-load)                         # basic-load on claude, all modes\n"
-	printf "  $(c command test-agents.sh) --mode $(c option project) $(c agent claude) $(c test basic-load)          # basic-load on claude, project mode\n"
-	printf "  $(c command test-agents.sh) $(c agent claude) $(c agent gemini) $(c test basic-load)                # basic-load on two agents, all modes\n"
-	printf "  $(c command test-agents.sh) $(c agent claude) $(c test basic-load) $(c test nested-precedence)      # Two tests on claude, all modes\n"
-	printf "  $(c command test-agents.sh) --install $(c option none) $(c agent claude)                 # Test claude's native support (no install)\n"
-	printf "  $(c command test-agents.sh) --install $(c option config)                         # Test with config-only install (no hooks)\n\n"
+	printf "  $(c command test-agents.sh)                                       # All tests, all agents, all modes\n"
+	printf "  $(c command test-agents.sh) $(c agent claude)                                # All tests on Claude\n"
+	printf "  $(c command test-agents.sh) $(c agent claude) $(c test basic-support)                  # Specific test on Claude\n"
+	printf "  $(c command test-agents.sh) $(c flag --mode) $(c option global)                         # All tests in global mode only\n"
+	printf "  $(c command test-agents.sh) $(c flag --debug) $(c option global) $(c agent claude) $(c test global-skills)   # Debug interactively\n\n"
 
 	printf "$(c heading Agents:)\n"
 	for agent in $KNOWN_AGENTS; do
 		if command -v "$agent" >/dev/null 2>&1; then
-			printf "  $(c agent %-8s) $(c success ✓ available)\n" "$agent"
+			printf "  $(c agent %-14s) $(c success ✓ available)\n" "$agent"
 		else
-			printf "  $(c agent %-8s) $(c error ✗ not found)\n" "$agent"
+			printf "  $(c agent %-14s) $(c error ✗ not found)\n" "$agent"
 		fi
 	done
 
@@ -477,6 +597,8 @@ show_help() {
 main() {
 	# Parse arguments
 	local verbose=0
+	local debug_mode=0
+	local debug_mode_arg=""
 	local mode_arg="all"
 	local install_arg="full"
 	local agent_args=""
@@ -492,6 +614,18 @@ main() {
 			-v|--verbose)
 				verbose=1
 				shift
+				;;
+			--debug)
+				debug_mode=1
+				debug_mode_arg="$2"
+				case "$debug_mode_arg" in
+					project|global|combined)
+						shift 2
+						;;
+					*)
+						panic 2 show_usage "$(c flag --debug) requires a mode: $(c_list option project global combined)"
+						;;
+				esac
 				;;
 			--mode)
 				mode_arg="$2"
@@ -651,11 +785,39 @@ main() {
 		tests_to_run="$tests"
 	fi
 
-	# Count agents
+	# Count agents and tests
 	local agent_count=0
 	for agent in $agents_to_run; do
 		agent_count=$((agent_count + 1))
 	done
+
+	local test_count=0
+	for test in $tests_to_run; do
+		test_count=$((test_count + 1))
+	done
+
+	# Debug mode validation and execution
+	if [ "$debug_mode" -eq 1 ]; then
+		# Validate requirements for debug mode
+		if [ "$agent_count" -ne 1 ]; then
+			panic 2 show_usage "Debug mode requires exactly one agent"
+		fi
+		if [ "$test_count" -ne 1 ]; then
+			panic 2 show_usage "Debug mode requires exactly one test"
+		fi
+
+		local agent="$agents_to_run"
+		local test_name="$tests_to_run"
+		local mode="$debug_mode_arg"
+
+		printf "\n$(c heading '=== Debug Mode ===')\n"
+		printf "Agent: $(c agent "$agent")\n"
+		printf "Test:  $(c test "$test_name")\n"
+		printf "Mode:  $(c option "$mode")\n\n"
+
+		run_debug "$agent" "$test_name" "$mode"
+		exit $?
+	fi
 
 	# Run tests
 	local total_passed=0

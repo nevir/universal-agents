@@ -1,3 +1,3 @@
 # Instructions
 
-When asked about code parts, the **user prefix** is: `USER`
+When asked about code parts, the **first part** is: `ALPHA`

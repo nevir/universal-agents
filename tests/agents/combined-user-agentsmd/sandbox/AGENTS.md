@@ -1,5 +1,5 @@
 # Instructions
 
-When asked about code parts, the **project suffix** is: `PROJECT`
+When asked about code parts, the **second part** is: `OMEGA`
 
-When combining codes, use the format: `{prefix}_{suffix}`
+When combining codes, use the format: `{first}_{second}`
